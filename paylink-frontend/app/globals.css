@@ -1,26 +1,134 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #071023;         /* page background */
+  --surface: #0b1724;    /* cards / panels */
+  --muted-surface: #0e2030;
+  --text: #e6eef6;       /* primary text */
+  --muted: #9fb0c7;      /* secondary text */
+  --primary: #22c76c;    /* accent / buttons */
+  --primary-600: #1da85a;
+  --border: #123041;
+  --soft-shadow: 0 6px 18px rgba(3,10,18,0.6);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Basic page setup */
+html, body, #__next {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+  margin: 0 0 0.5rem 0;
+  font-weight: 700;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Links */
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color .12s ease;
+}
+a:hover { color: var(--primary-600); }
+
+/* Small text utilities */
+.muted { color: var(--muted); }
+
+/* -----------------------
+   Reusable surface & controls
+   ----------------------- */
+.container {
+  max-width: 72rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Card surface */
+.card {
+  background: linear-gradient(180deg, var(--surface), var(--muted-surface));
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: var(--soft-shadow);
+  border: 1px solid var(--border);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: transform .06s ease, background-color .12s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, var(--primary), var(--primary-600));
+  color: white;
+  padding: 0.6rem 1rem;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.btn-primary:hover { transform: translateY(-1px); }
+
+/* Ghost / outline button for secondary actions */
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.02); transform: translateY(-1px); }
+
+/* Input / field styles */
+.input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.input::placeholder { color: rgba(255,255,255,0.28); }
+
+/* Small utility spacing */
+.spacer-sm { height: 0.5rem; }
+.spacer-md { height: 1rem; }
+.spacer-lg { height: 2rem; }
+
+/* Small responsive tweaks */
+@media (max-width: 640px) {
+  .container { padding-left: 0.75rem; padding-right: 0.75rem; }
+  .card { padding: 1rem; }
+}
+
+/* Accessibility focus outlines */
+:focus {
+  outline: 2px solid rgba(34, 199, 108, 0.18);
+  outline-offset: 3px;
+}
+
+/* Make sure form elements inherit color */
+input, textarea, select, button {
+  color: inherit;
+  font: inherit;
+  border-radius: 8px;
+}
+
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  margin: 0.75rem 0;
 }
