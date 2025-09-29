@@ -84,13 +84,13 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
   if (!isConnected) {
     return (
-      <div className="mx-auto bg-[url('/images/imgs/BizFlip.png')] bg-cover bg-center h-full min-h-[calc(100vh-80px)] relative z-10 md:bg-[url('/images/imgs/BizFlip.png')] sm:bg-[url('/images/imgs/BizFlip_Mobile.png')] flex items-center">
+      <div className="mx-auto min-h-[calc(100vh-80px)] flex items-center">
         <div className="mx-auto max-w-[1200px] w-[90%] flex items-center justify-center h-full bg-transparent flex-col">
           <div className="mt-6 flex flex-col items-center">
             <button
               onClick={handleConnectWallet}
               disabled={loading || walletLoading}
-              className={`px-10 md:px-12 py-3 md:py-6 bg-gradient-to-r from-[rgba(63,94,251,0.7)] to-[rgba(87,111,230,0.7)] hover:from-[#fc466b] hover:to-[#fd6d8f] rounded-[20px] cursor-pointer transition-all duration-500 text-white text-[28px] font-extrabold border-none shadow-[0px_8px_20px_rgba(0,0,0,0.4)] hover:shadow-[0px_10px_25px_rgba(0,0,0,0.5)] transform hover:scale-105 focus:outline-none tracking-wide ${(loading || walletLoading) ? 'opacity-70 cursor-not-allowed' : ''}`}
+              className={`px-10 md:px-12 py-3 md:py-6 rounded-[20px] cursor-pointer transition-all duration-500 text-white text-[28px] font-extrabold bg-green-600 focus:outline-none tracking-wide ${(loading || walletLoading) ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
               {loading || walletLoading ? (
                 <span className="flex items-center">
