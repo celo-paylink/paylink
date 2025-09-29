@@ -77,3 +77,35 @@ export async function updateUser(id: string, values: Prisma.UserUpdateInput) {
     throw new AppError("Internal server error", 500);
   }
 }
+
+export async function createClaim(values: Prisma.ClaimCreateInput) {
+  try {
+    const data = await prisma.claim.create({
+      data: values,
+    });
+    return data;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error("Error creating claim:", error.message);
+    } else {
+      console.error("Error creating claim:", error);
+    }
+    throw new AppError("Internal server error", 500);
+  }
+}
+
+export async function getClaimByCode(claimCode: string) {
+  try {
+    const data = await prisma.claim.findUnique({
+      where: { claimCode }
+    });
+    return data;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error("Error finding claim:", error.message);
+    } else {
+      console.error("Error finding claim:", error);
+    }
+    throw new AppError("Internal server error", 500);
+  }
+}

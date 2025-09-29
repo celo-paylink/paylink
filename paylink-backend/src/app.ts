@@ -9,6 +9,7 @@ import { CustomError } from "./lib/type";
 import corsOptions from "./config/cors";
 import indexRouter from "./routes/index.routes";
 import authRouter from "./routes/auth.routes";
+import paylinkRouter from "./routes/paylink.routes";
 
 dotenv.config();
 const app = express();
@@ -27,7 +28,8 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-app.use("/api/auth", authRouter);
+app.use("/api/auth/siwe", authRouter);
+app.use("/api/paylink/", paylinkRouter);
 app.use("/api", indexRouter);
 
 // 404 handler

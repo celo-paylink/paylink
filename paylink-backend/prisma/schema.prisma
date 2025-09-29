@@ -18,15 +18,46 @@ model User {
   id             String    @id @default(uuid())
   walletAddress  String    @unique
   name           String?
-  role           Role    @default(USER)
+  role           Role      @default(USER)
   nonce          String?
   nonceExpiresAt DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
+  Claim          Claim[]
 }
 
 enum Role {
   USER
   ADMIN
+}
+
+model Claim {
+  id            String   @id @default(uuid())
+  claimId       Int?     @unique
+  claimCode     String   @unique
+  payerAddress  String
+  token         String
+  amount        String
+  expiry        DateTime
+  recipient     String?
+  secretHash    String?
+  status        Status   @default(CREATED)
+  txHashCreate  String?
+  txHashClaim   String?
+  txHashReclaim String?
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiry])
+}
+
+enum Status {
+  CREATED
+  CLAIMED
+  RECLAIMED
 }

@@ -6,13 +6,13 @@ import * as authControllers from "../controllers/auth.controllers";
 const authRouter = Router();
 
 authRouter.post(
-  "/siwe/nonce",
+  "/nonce",
   validate({ body: schemas.createUserSchema }),
   authControllers.userNonce,
 );
 
 authRouter.post(
-  "/siwe/verify",
+  "/verify",
   validate({ body: schemas.verifyUserSchema }),
   authControllers.userVerfication,
 );
