@@ -51,4 +51,20 @@ export const createClaimSchema = z.object({
   txHashCreate: z.string().regex(/^0x([A-Fa-f0-9]{64})$/, { message: "Invalid tx hash" })
 });
 
+export const claimCodeParamSchema = z.object({
+  claimCode: z.string({message: "Claim code is required"}),
+});
+
+export const confirmClaimSchema = z.object({
+  claimCode: z
+    .string({ message: "Claim code is required" }),
+  txHashClaim: z.string().regex(/^0x([A-Fa-f0-9]{64})$/, { message: "Invalid tx hash" })
+});
+
+export const reclaimClaimSchema = z.object({
+  claimCode: z
+    .string({ message: "Claim code is required" }),
+  txHashReclaim: z.string().regex(/^0x([A-Fa-f0-9]{64})$/, { message: "Invalid tx hash" })
+});
+
 

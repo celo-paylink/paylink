@@ -1,6 +1,7 @@
 import * as queries from "../db/queries";
 import { AppError } from "../error/errorHandler";
-import { verifyCreateTx } from "../lib/txVerifier";
+import { Status } from "../generated/prisma";
+import { verifyClaimTx, verifyCreateTx, verifyReclaimTx } from "../lib/txVerifier";
 import { generateClaimCode } from "../utils/claim-code";
 
 export const createClaim = async (data: { 
@@ -36,7 +37,7 @@ export const createClaim = async (data: {
 
   let claimCode = generateClaimCode(12);
   for (let i = 0; i < 5; i++) {
-    const found = await queries.getClaimByCode(claimCode );
+    const found = await queries.getClaimByCode(claimCode);
     if (!found) break;
     claimCode = generateClaimCode(12);
   }
@@ -57,4 +58,106 @@ export const createClaim = async (data: {
   const link = `/claim/${claimCode}`;
   return { claim: created, link };
 };
+
+export const getClaim = async (claimCode: string ) => {
+  const claim = await queries.getClaimByCode(claimCode);
+
+  if (!claim) {
+    throw new AppError("Claim not found", 404);
+  }
+
+  let recipientMasked = null;
+  if (claim.recipient) {
+    recipientMasked = `${claim.recipient.slice(0, 6)}...${claim.recipient.slice(-4)}`;
+  }
+
+  const claimData = {
+    claimCode: claim.claimCode,
+    claimId: claim.claimId,
+    payerAddress: claim.payerAddress,
+    token: claim.token,
+    amount: claim.amount,
+    expiry: claim.expiry,
+    recipientMasked,
+    requiresSecret: !!claim.secretHash,
+    status: claim.status
+  };
+
+  return { claim: claimData };
+};
+
+export const confirmClaim = async (data: { 
+  claimCode: string, 
+  txHashClaim: string 
+}) => {
+  const { claimCode, txHashClaim } = data;
+
+  const claim = await queries.getClaimByCode(claimCode);
+
+  if (!claim) {
+    throw new AppError("Claim not found", 404);
+  }
+
+  try {
+    await verifyClaimTx(txHashClaim, Number(claim.claimId));
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    throw new AppError(`On-chain claim tx verification failed: ${errorMessage}`, 400);
+  }
+
+  // 3. Update claim in DB
+  const updatedClaim = await queries.updateClaim(claim.id, {
+    status: Status.CLAIMED,
+    txHashClaim,
+  });
+
+  if (!updatedClaim) {
+    throw new AppError("Failed to update claim after verification", 500);
+  }
+
+  // 4. Build response payload
+  return {
+    claimCode: updatedClaim.claimCode,
+    status: updatedClaim.status,
+    txHashClaim: updatedClaim.txHashClaim,
+    claimedAt: updatedClaim.updatedAt,
+  };
+};
+
+export const reclaimClaim = async (data: { 
+  claimCode: string, 
+  txHashReclaim: string 
+}) => {
+  const { claimCode, txHashReclaim } = data;
+
+  const claim = await queries.getClaimByCode(claimCode);
+
+  if (!claim) {
+    throw new AppError("Claim not found", 404);
+  }
+
+  try {
+    await verifyReclaimTx(txHashReclaim, Number(claim.claimId));
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    throw new AppError(`On-chain claim tx verification failed: ${errorMessage}`, 400);
+  }
+
+  const updatedClaim = await queries.updateClaim(claim.id, {
+    status: Status.RECLAIMED,
+    txHashReclaim,
+  });
+
+  if (!updatedClaim) {
+    throw new AppError("Failed to update claim after verification", 500);
+  }
+
+  return {
+    claimCode: updatedClaim.claimCode,
+    status: updatedClaim.status,
+    txHashReclaim: updatedClaim.txHashReclaim,
+    reclaimedAt: updatedClaim.updatedAt,
+  };
+};
+
 

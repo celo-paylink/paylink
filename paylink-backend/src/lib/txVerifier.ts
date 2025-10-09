@@ -42,7 +42,6 @@ export async function verifyCreateTx(txHash: string, expectedClaimId?: number) {
       }
     } catch (e) {
       console.warn("log parse error", e);
-      // ignore parse errors for non-matching logs
     }
   }
 
@@ -54,18 +53,19 @@ export async function verifyClaimTx(txHash: string, expectedClaimId?: number) {
   if (!receipt || receipt.status === 0) throw new Error("tx failed or not found");
 
   const contract = getPaylinkContract();
+  const contractAddress = await contract.getAddress();
   const iface = contract.interface;
 
   for (const log of receipt.logs) {
-    if (log.address.toLowerCase() !== contract.address.toString().toLowerCase()) continue;
+    if (log.address.toLowerCase() !== contractAddress.toLowerCase()) continue;
     try {
       const parsed = iface.parseLog(log);
       if (parsed && parsed.name === "Claimed") {
         const [id, claimer, amount] = parsed.args;
         const payload = {
-          id: id.toNumber(),
+          id: Number(id),
           claimer: claimer,
-          amount: amount.toString()
+          amount: Number(amount).toString(),
         };
         if (expectedClaimId && payload.id !== expectedClaimId) {
           throw new Error(`claim event claimId mismatch. expected ${expectedClaimId} got ${payload.id}`);
@@ -85,18 +85,19 @@ export async function verifyReclaimTx(txHash: string, expectedClaimId?: number) 
   if (!receipt || receipt.status === 0) throw new Error("tx failed or not found");
 
   const contract = getPaylinkContract();
+  const contractAddress = await contract.getAddress();
   const iface = contract.interface;
 
   for (const log of receipt.logs) {
-    if (log.address.toLowerCase() !== contract.address.toString().toLowerCase()) continue;
+    if (log.address.toLowerCase() !== contractAddress.toLowerCase()) continue;
     try {
       const parsed = iface.parseLog(log);
       if (parsed && parsed.name === "Reclaimed") {
         const [id, payer, amount] = parsed.args;
         const payload = {
-          id: id.toNumber(),
+          id: Number(id),
           payer: payer,
-          amount: amount.toString()
+          amount: Number(amount).toString(),
         };
         if (expectedClaimId && payload.id !== expectedClaimId) {
           throw new Error(`reclaim event claimId mismatch. expected ${expectedClaimId} got ${payload.id}`);

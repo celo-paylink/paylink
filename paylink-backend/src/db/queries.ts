@@ -109,3 +109,20 @@ export async function getClaimByCode(claimCode: string) {
     throw new AppError("Internal server error", 500);
   }
 }
+
+export async function updateClaim(claimCode: string, values: Prisma.ClaimUpdateInput) {
+  try {
+    const data = await prisma.claim.update({
+      where: { claimCode },
+      data: values,
+    });
+    return data;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error("Error finding claim:", error.message);
+    } else {
+      console.error("Error finding claim:", error);
+    }
+    throw new AppError("Internal server error", 500);
+  }
+}

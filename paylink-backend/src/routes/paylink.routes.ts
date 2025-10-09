@@ -15,10 +15,21 @@ paylinkRouter.post(
 );
 
 paylinkRouter.get(
-  "/create",
-  (req, res) => {
-    res.send("Hello from paylink create GET endpoint");
-  }
+  "/claim/:claimCode",
+  validate({ body: schemas.claimCodeParamSchema }),
+  paylinkControllers.getClaim
+);
+
+paylinkRouter.put(
+  "/claim/confirm",
+  validate({ body: schemas.confirmClaimSchema }),
+  paylinkControllers.confirmClaim
+);
+
+paylinkRouter.put(
+  "/reclaim/confirm",
+  validate({ body: schemas.reclaimClaimSchema }),
+  paylinkControllers.reclaimClaim
 );
 
 export default paylinkRouter;
