@@ -1,11 +1,8 @@
-"use client";
-
 import Link from "next/link";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 
-export default function HomePage() {
+export default function page() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen max-w-5xl mx-auto flex flex-col">
       <main className="flex flex-col items-center justify-center flex-1 px-6 text-center">
         <h2 className="text-4xl font-bold mb-4">
           Send and claim funds easily with Paylinks
@@ -29,7 +26,7 @@ export default function HomePage() {
         </div>
       </main>
 
-      <section className="py-16 bg-gray-50">
+      <section className="py-16 bg-green-300">
         <h3 className="text-2xl font-bold text-center mb-8">How it works</h3>
         <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto text-center">
           <div>

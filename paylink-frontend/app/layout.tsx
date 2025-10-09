@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased max-w-5xl mx-auto px-4`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased px-4`}
       >
         <AppProvider>
           <AuthProvider>
@@ -38,8 +38,8 @@ export default function RootLayout({
             <LayoutGuard>
               {children}
             </LayoutGuard>
+            <ToastContainer />
           </AuthProvider>
-          <ToastContainer />
         </AppProvider>
       </body>
     </html>

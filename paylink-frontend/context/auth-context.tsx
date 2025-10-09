@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { disconnect } = useDisconnect();
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('paylink_auth_token');
     if (token) {
       setAuthToken(token);
       if (address) {
@@ -196,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(null);
     setAuthMessage(null);
     setUser(null);
-    localStorage.removeItem('authToken');
+    localStorage.removeItem('paylink_auth_token');
   };
 
   const value: AuthContextType = {

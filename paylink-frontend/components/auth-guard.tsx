@@ -85,7 +85,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   if (!isConnected) {
     return (
       <div className="mx-auto min-h-[calc(100vh-80px)] flex items-center">
-        <div className="mx-auto max-w-[1200px] w-[90%] flex items-center justify-center h-full bg-transparent flex-col">
+        <div className="mx-auto flex items-center justify-center h-full bg-transparent flex-col">
           <div className="mt-6 flex flex-col items-center">
             <button
               onClick={handleConnectWallet}
@@ -118,7 +118,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   if (!isAuthenticated) {
     return (
       <div
-        className="px-5 md:px-8 lg:px-10 xl:px-12 2xl:px-16 flex items-center justify-center min-h-screen bg-[url('/images/imgs/BizFlip.png')] bg-cover bg-center text-white"
+        className="px-5 md:px-8 lg:px-10 xl:px-12 2xl:px-16 flex items-center justify-center min-h-screen text-white"
       >
         <div className="text-center">
           {loading ? (
