@@ -7,7 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "build": "prisma generate && tsc",
     "deploy:migrate": "prisma migrate deploy",
-    "start": "node dist/app.js",
+    "start": "prisma migrate deploy && node dist/app.js",
     "prepare": "husky"
   },
   "lint-staged": {
