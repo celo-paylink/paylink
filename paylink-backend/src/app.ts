@@ -1,17 +1,16 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import passport from "./config/passport-config";
+import corsOptions from "./config/cors";
 
 import { CustomError } from "./lib/type";
-import corsOptions from "./config/cors";
-import indexRouter from "./routes/index.routes";
-import authRouter from "./routes/auth.routes";
-import paylinkRouter from "./routes/paylink.routes";
+import * as routes from "./routes";
 
-dotenv.config();
 const app = express();
 
 app.use(helmet());
@@ -28,9 +27,9 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-app.use("/api/auth/siwe", authRouter);
-app.use("/api/paylink/", paylinkRouter);
-app.use("/api", indexRouter);
+app.use("/api/auth/siwe", routes.authRouter);
+app.use("/api/paylink/", routes.paylinkRouter);
+app.use("/api", routes.indexRouter);
 
 // 404 handler
 app.use((req, res) => {
