@@ -2,7 +2,7 @@ import axios from "axios";
 import { disconnect } from '@wagmi/core'
 import { config } from "../libs/config";
 
-const baseURL = 'http://localhost:5000/api';
+const baseURL = 'https://paylink-backend-9ks2.onrender.com/api';
 
 const axiosInstance = axios.create({
   baseURL, 
