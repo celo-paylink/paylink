@@ -15,7 +15,7 @@ async function main() {
   const abi = paylink.abi;
 
   const outputDirs = [
-    path.join(__dirname, "../../paylink-frontend/libs"),
+    path.join(__dirname, "../../paylink_frontend/src/libs"),
     path.join(__dirname, "../../paylink-backend/src/lib"),
   ];
 
