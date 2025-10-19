@@ -16,7 +16,7 @@ paylinkRouter.post(
 
 paylinkRouter.get(
   "/claim/:claimCode",
-  validate({ body: schemas.claimCodeParamSchema }),
+  validate({ params: schemas.claimCodeParamSchema }),
   paylinkControllers.getClaim
 );
 
