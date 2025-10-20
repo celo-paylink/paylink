@@ -62,3 +62,17 @@ export const ERC20_ABI = [
     outputs: [{ type: "bool", name: "" }],
   },
 ] as const;
+
+// Constants
+export const TOKEN_ADDRESSES = {
+  cUSD: "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1",
+  cEUR: "0x10c892A6EC43a53E45D0B916B4b7D383B1b78C0F",
+  cREAL: "0xE4D517785D091D3c54818832dB6094bcc2744545"
+} as const;
+
+export const CHAIN_EXPLORERS = {
+  44787: "https://alfajores.celoscan.io/tx/",
+  42220: "https://explorer.celo.org/tx/",
+  1: "https://etherscan.io/tx/",
+  137: "https://polygonscan.com/tx/",
+} as const;
