@@ -106,7 +106,7 @@ export const confirmClaim = async (data: {
   }
 
   // 3. Update claim in DB
-  const updatedClaim = await queries.updateClaim(claim.id, {
+  const updatedClaim = await queries.updateClaim(claim.claimCode, {
     status: Status.CLAIMED,
     txHashClaim,
   });
@@ -143,7 +143,7 @@ export const reclaimClaim = async (data: {
     throw new AppError(`On-chain claim tx verification failed: ${errorMessage}`, 400);
   }
 
-  const updatedClaim = await queries.updateClaim(claim.id, {
+  const updatedClaim = await queries.updateClaim(claim.claimCode, {
     status: Status.RECLAIMED,
     txHashReclaim,
   });
