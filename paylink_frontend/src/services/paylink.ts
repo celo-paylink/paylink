@@ -5,6 +5,10 @@ export const PaylinkService = {
     const response = await axiosInstance.post('/paylink/create', payload);
     return response 
   },
+  getUserClaims: async () => {
+    const response = await axiosInstance.get("/paylink/claims");
+    return response 
+  },
   getClaim: async (claimCode: string) => {
     const response = await axiosInstance.get(`/paylink/claim/${claimCode}`);
     return response 

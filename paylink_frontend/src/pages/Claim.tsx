@@ -143,7 +143,7 @@ export default function Claim() {
 
     // Check against known token addresses
     const tokenEntry = Object.entries(TOKEN_ADDRESSES).find(
-      ([_, tokenAddress]) => tokenAddress.toLowerCase() === normalizedAddress
+      ([, tokenAddress]) => tokenAddress.toLowerCase() === normalizedAddress
     );
 
     return tokenEntry ? tokenEntry[0] : "Unknown Token";

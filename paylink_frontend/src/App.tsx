@@ -5,6 +5,8 @@ import DashboardPage from './pages/Dashboard'
 import CreatePaylinkPage from './pages/Create'
 import ClaimHome from './pages/ClaimHome'
 import Claim from './pages/Claim'
+import Reclaim from './pages/Reclaim'
+import ReclaimHome from './pages/ReclaimHome'
 
 function App() {
   return (
@@ -17,6 +19,12 @@ function App() {
         <Route index element={<ClaimHome />} />
         <Route path=":claimCode" element={<Claim />} />
       </Route>
+
+      <Route path="reclaim">
+        <Route index element={<ReclaimHome />} />
+        <Route path=":claimCode" element={<Reclaim />} />
+      </Route>
+
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

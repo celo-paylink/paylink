@@ -7,7 +7,7 @@ export default function Navbar() {
       <h1 className="text-xl font-bold">Paylink</h1>
       <nav className="flex gap-4">
         <NavLink to="/">Home</NavLink>
-        <NavLink to="/dashboard">Dashboard</NavLink>
+        <NavLink to="/reclaim">Reclaim</NavLink>
         <NavLink to="/claim">Claim</NavLink>
         <NavLink to="/about">About</NavLink>
       </nav>
