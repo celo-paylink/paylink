@@ -86,6 +86,18 @@ export const getClaim = async (claimCode: string ) => {
   return { claim: claimData };
 };
 
+export const getUserClaims = async (id: string) => {
+  const user = await queries.getUserById(id);
+
+  if (!user || user.deletedAt) {
+    throw new AppError('User not found', 404);
+  }
+
+  const claims = await queries.getUserClaims(id);
+
+  return { claims };
+};
+
 export const confirmClaim = async (data: { 
   claimCode: string, 
   txHashClaim: string 

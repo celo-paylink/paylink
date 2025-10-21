@@ -110,6 +110,27 @@ export async function getClaimByCode(claimCode: string) {
   }
 }
 
+export async function getUserClaims(id: string) {
+  try {
+    const data = await prisma.claim.findMany({
+      where: {
+        userId: id
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    return data;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error("Error finding user claims:", error.message);
+    } else {
+      console.error("Error finding user claims:", error);
+    }
+    throw new AppError("Internal server error", 500);
+  }
+}
+
 export async function updateClaim(claimCode: string, values: Prisma.ClaimUpdateInput) {
   try {
     const data = await prisma.claim.update({

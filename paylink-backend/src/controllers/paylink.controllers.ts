@@ -24,6 +24,18 @@ export const getClaim = asyncHandler(
   },
 );
 
+export const getUserClaims = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const id  = req.user?.id as string;
+    const data = await paylinkService.getUserClaims(id);
+
+    res.status(201).json({
+      message: "Claims fetched successfully",
+      data
+    });
+  },
+);
+
 export const confirmClaim = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { body }  = req;

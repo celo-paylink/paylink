@@ -32,4 +32,9 @@ paylinkRouter.put(
   paylinkControllers.reclaimClaim
 );
 
+paylinkRouter.get(
+  "/claims",
+  paylinkControllers.getUserClaims
+);
+
 export default paylinkRouter;
