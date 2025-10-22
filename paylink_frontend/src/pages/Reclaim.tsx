@@ -74,7 +74,6 @@ export default function Reclaim() {
     }
   }, [reclaimReceipt, claimCode]);
 
-  // Handle smart contract reclaim
   const handleReclaimContract = async () => {
     if (!isConnected || !address) {
       toast.error("Please connect your wallet");
@@ -86,7 +85,6 @@ export default function Reclaim() {
       return;
     }
 
-    // Verify user is the payer
     if (claim.payerAddress.toLowerCase() !== address.toLowerCase()) {
       toast.error("Only the payer can reclaim this payment");
       return;
