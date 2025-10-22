@@ -50,7 +50,7 @@ export const confirmClaim = asyncHandler(
 export const reclaimClaim = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { body }  = req;
-    const data = await paylinkService.getClaim(body);
+    const data = await paylinkService.reclaimClaim(body);
     res.status(201).json({
       message: "Reclaimed funds successfully",
       data
