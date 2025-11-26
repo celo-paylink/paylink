@@ -1,50 +1,206 @@
 @import "tailwindcss";
 
+/* ============================================
+   CUSTOM PROPERTIES - Design Tokens
+   ============================================ */
 :root {
-  --bg: #071023;         /* page background */
-  --surface: #0b1724;    /* cards / panels */
-  --muted-surface: #0e2030;
-  --text: #e6eef6;       /* primary text */
-  --muted: #9fb0c7;      /* secondary text */
-  --primary: #22c76c;    /* accent / buttons */
-  --primary-600: #1da85a;
-  --border: #123041;
-  --soft-shadow: 0 6px 18px rgba(3,10,18,0.6);
+  /* Color Palette - Hacker's Console Theme */
+  --bg-primary: #000000;
+  --bg-secondary: #050505;
+  --bg-tertiary: #0a0a0a;
+  --bg-card: #111111;
+
+  /* Terminal Colors */
+  --terminal-green: #00FF9D;
+  --terminal-green-bright: #4FFFB0;
+  --terminal-green-dim: #00CC7E;
+
+  /* Accent Colors */
+  --accent-primary: #00FF9D;
+  --accent-secondary: #FF6B00;
+  --accent-danger: #FF3B3B;
+  --accent-warning: #FFC700;
+  --accent-info: #00D9FF;
+
+  /* Text Colors */
+  --text-primary: #FFFFFF;
+  --text-secondary: #CCCCCC;
+  --text-muted: #888888;
+  --text-dim: #555555;
+
+  /* Border Colors */
+  --border-primary: #333333;
+  --border-secondary: #222222;
+  --border-accent: #00FF9D;
+  --border-orange: #FF6B00;
+
+  /* NO SHADOWS - Border-First Design */
+  --shadow-none: none;
+
+  /* Console/Terminal Effect */
+  --console-glow: 0 0 10px rgba(0, 255, 157, 0.3);
+  --console-text-shadow: 0 0 5px rgba(0, 255, 157, 0.5);
 }
 
-/* Basic page setup */
-html, body, #__next {
+/* ============================================
+   BASE STYLES
+   ============================================ */
+html,
+body,
+#root {
   height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  /* Transparent to show canvas background */
+  color: var(--text-primary);
   -webkit-text-size-adjust: 100%;
 }
 
-/* Headings */
-h1, h2, h3, h4, h5, h6 {
-  color: var(--text);
-  margin: 0 0 0.5rem 0;
+body {
+  font-family: 'Space Mono', 'Courier New', monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
+/* ============================================
+   TYPOGRAPHY - Monospaced System
+   ============================================ */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Space Mono', 'Courier New', monospace;
+  color: var(--text-primary);
+  margin: 0 0 1rem 0;
   font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: 2.5rem;
+}
+
+h2 {
+  font-size: 2rem;
+}
+
+h3 {
+  font-size: 1.5rem;
+}
+
+h4 {
+  font-size: 1.25rem;
+}
+
+h5 {
+  font-size: 1.125rem;
+}
+
+h6 {
+  font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+  }
 }
 
 /* Links */
 a {
-  color: var(--primary);
+  color: var(--accent-primary);
   text-decoration: none;
-  transition: color .12s ease;
+  transition: color 0.2s ease;
 }
-a:hover { color: var(--primary-600); }
+
+a:hover {
+  color: var(--terminal-green-bright);
+  text-shadow: var(--console-text-shadow);
+}
 
 /* Small text utilities */
-.muted { color: var(--muted); }
+.text-muted {
+  color: var(--text-muted);
+}
 
-/* -----------------------
-   Reusable surface & controls
-   ----------------------- */
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   GRADIENT UTILITIES - Removed for CLI Aesthetic
+   ============================================ */
+.gradient-text {
+  color: var(--accent-primary);
+  text-shadow: var(--console-text-shadow);
+}
+
+.gradient-text-green {
+  color: var(--accent-primary);
+  text-shadow: var(--console-text-shadow);
+}
+
+.gradient-border {
+  border: 2px solid var(--accent-primary);
+  border-radius: 4px;
+}
+
+/* ============================================
+   BORDER-FIRST DESIGN (NO GLASSMORPHISM)
+   ============================================ */
+.glass {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  box-shadow: none;
+}
+
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  padding: 1.25rem;
+  box-shadow: none;
+  transition: border-color 0.2s ease;
+}
+
+.glass-card:hover {
+  border-color: var(--accent-primary);
+}
+
+/* ============================================
+   CONTAINERS & LAYOUT
+   ============================================ */
 .container {
   max-width: 72rem;
   margin-left: auto;
@@ -53,82 +209,338 @@ a:hover { color: var(--primary-600); }
   padding-right: 1rem;
 }
 
-/* Card surface */
-.card {
-  background: linear-gradient(180deg, var(--surface), var(--muted-surface));
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: var(--soft-shadow);
-  border: 1px solid var(--border);
+.container-narrow {
+  max-width: 48rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
-/* Buttons */
+/* Card surface - CLI Style */
+.card {
+  background: var(--bg-card);
+  border-radius: 4px;
+  padding: 1.25rem;
+  box-shadow: none;
+  border: 1px solid var(--border-primary);
+  transition: border-color 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--accent-primary);
+}
+
+/* ============================================
+   BUTTONS - CLI Style
+   ============================================ */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: .5rem;
-  border-radius: 10px;
-  font-weight: 600;
-  transition: transform .06s ease, background-color .12s ease;
+  gap: 0.5rem;
+  border-radius: 4px;
+  font-weight: 700;
+  font-family: 'Space Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
   cursor: pointer;
   user-select: none;
+  border: 2px solid;
+  font-size: 0.875rem;
+  position: relative;
+}
+
+.btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: var(--border-secondary);
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, var(--primary), var(--primary-600));
-  color: white;
-  padding: 0.6rem 1rem;
-  border: 1px solid rgba(255,255,255,0.04);
+  background: transparent;
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  padding: 0.5rem 1rem;
+  box-shadow: none;
 }
-.btn-primary:hover { transform: translateY(-1px); }
 
-/* Ghost / outline button for secondary actions */
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  box-shadow: var(--console-glow);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--accent-secondary);
+  border-color: var(--accent-secondary);
+  padding: 0.5rem 1rem;
+  box-shadow: none;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--accent-secondary);
+  color: var(--bg-primary);
+}
+
 .btn-ghost {
   background: transparent;
-  color: var(--text);
-  padding: 0.5rem 0.85rem;
-  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 0.5rem 1rem;
+  border-color: var(--border-primary);
 }
-.btn-ghost:hover { background: rgba(255,255,255,0.02); transform: translateY(-1px); }
 
-/* Input / field styles */
-.input {
+.btn-ghost:hover:not(:disabled) {
+  background: transparent;
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+/* ============================================
+   FORM INPUTS - Terminal Style
+   ============================================ */
+.input,
+input[type="text"],
+input[type="number"],
+input[type="email"],
+select,
+textarea {
   width: 100%;
-  padding: 0.6rem 0.75rem;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.02);
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-.input::placeholder { color: rgba(255,255,255,0.28); }
-
-/* Small utility spacing */
-.spacer-sm { height: 0.5rem; }
-.spacer-md { height: 1rem; }
-.spacer-lg { height: 2rem; }
-
-/* Small responsive tweaks */
-@media (max-width: 640px) {
-  .container { padding-left: 0.75rem; padding-right: 0.75rem; }
-  .card { padding: 1rem; }
+  padding: 0.625rem 0.875rem;
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  font-size: 0.9375rem;
+  font-family: 'Space Mono', monospace;
+  transition: all 0.2s ease;
 }
 
-/* Accessibility focus outlines */
-:focus {
-  outline: 2px solid rgba(34, 199, 108, 0.18);
-  outline-offset: 3px;
+.input:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: var(--console-glow);
+  background: var(--bg-primary);
 }
 
-/* Make sure form elements inherit color */
-input, textarea, select, button {
-  color: inherit;
-  font: inherit;
-  border-radius: 8px;
+.input::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-dim);
 }
 
+.input:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  border-color: var(--border-secondary);
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Spacing */
+.spacer-xs {
+  height: 0.25rem;
+}
+
+.spacer-sm {
+  height: 0.5rem;
+}
+
+.spacer-md {
+  height: 1rem;
+}
+
+.spacer-lg {
+  height: 2rem;
+}
+
+.spacer-xl {
+  height: 3rem;
+}
+
+/* Divider */
 .divider {
   height: 1px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  margin: 0.75rem 0;
+  background: var(--border-primary);
+  margin: 1.5rem 0;
+}
+
+/* Glow Effect - Terminal Style */
+.glow {
+  box-shadow: var(--console-glow);
+}
+
+.glow-green {
+  box-shadow: var(--console-glow);
+}
+
+/* Loading Spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  border: 3px solid rgba(148, 163, 184, 0.2);
+  border-top-color: var(--gradient-purple);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Fade In Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Pulse Animation */
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Shimmer Effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(148, 163, 184, 0.1) 50%,
+      transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Badge - Tag System */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 2px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: 'Space Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid;
+}
+
+.badge-success {
+  background: transparent;
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.badge-info {
+  background: transparent;
+  color: var(--accent-info);
+  border-color: var(--accent-info);
+}
+
+.badge-warning {
+  background: transparent;
+  color: var(--accent-warning);
+  border-color: var(--accent-warning);
+}
+
+.badge-danger {
+  background: transparent;
+  color: var(--accent-danger);
+  border-color: var(--accent-danger);
+}
+
+.badge-orange {
+  background: transparent;
+  color: var(--accent-secondary);
+  border-color: var(--accent-secondary);
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media (max-width: 768px) {
+
+  .container,
+  .container-narrow {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .card,
+  .glass-card {
+    padding: 1rem;
+    border-radius: 4px;
+  }
+
+  .btn {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -1,16 +1,16 @@
 import '@rainbow-me/rainbowkit/styles.css'
 import { getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { http } from 'viem';
-import { celoAlfajores } from 'wagmi/chains';
+import { celo } from 'wagmi/chains';
 
 export const config = getDefaultConfig({
-  appName: 'My Celo DApp',
+  appName: 'Minth',
   projectId: "7b20fbb4bba28015e2d4ddfbe5d08a43",
   chains: [
-    celoAlfajores
+    celo
   ],
   transports: {
-    [celoAlfajores.id]: http(),
+    [celo.id]: http(),
   },
   ssr: true,
 })

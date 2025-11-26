@@ -60,7 +60,7 @@ export default function Claim() {
 
   // Backend mutation to update claim status
   const backendMutation = useMutation({
-    mutationFn: async (payload: { claimCode: string; txHashClaim: string}) => {
+    mutationFn: async (payload: { claimCode: string; txHashClaim: string }) => {
       const response = await PaylinkService.confirmClaim(payload);
       return response.data;
     },
@@ -99,7 +99,7 @@ export default function Claim() {
       const secretBytes = secret
         ? ethers.hexlify(ethers.toUtf8Bytes(secret))
         : ethers.hexlify(ethers.toUtf8Bytes(""));
-        
+
       toast.info("Submitting claim to blockchain...");
 
       const hash = await claimAsync({
@@ -410,7 +410,7 @@ export default function Claim() {
               ✓ Claim processed successfully!
             </p>
             <a
-              href={`https://alfajores.celoscan.io/tx/${claimReceipt.transactionHash}`}
+              href={`https://celoscan.io/tx/${claimReceipt.transactionHash}`}
               target="_blank"
               rel="noreferrer"
               className="btn-ghost"

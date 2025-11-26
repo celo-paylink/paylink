@@ -71,8 +71,8 @@ export const TOKEN_ADDRESSES = {
 } as const;
 
 export const CHAIN_EXPLORERS = {
+  42220: "https://celoscan.io/tx/",
   44787: "https://alfajores.celoscan.io/tx/",
-  42220: "https://explorer.celo.org/tx/",
   1: "https://etherscan.io/tx/",
   137: "https://polygonscan.com/tx/",
 } as const;

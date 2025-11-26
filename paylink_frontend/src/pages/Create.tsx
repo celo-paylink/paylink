@@ -144,7 +144,7 @@ export default function CreatePaylinkPage() {
   // Form state
   const [claimLink, setClaimLink] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
-  
+
   // Persistent form data stored in ref to prevent loss during re-renders
   const persistentFormDataRef = useRef<PersistentFormData | null>(null);
   const [formDataSnapshot, setFormDataSnapshot] = useState<PersistentFormData | null>(null);
@@ -203,7 +203,7 @@ export default function CreatePaylinkPage() {
         rawAmount: rawAmount.toString(),
         currentToken,
       };
-      
+
       persistentFormDataRef.current = snapshot;
       setFormDataSnapshot(snapshot);
     }
@@ -275,12 +275,12 @@ export default function CreatePaylinkPage() {
     }
 
     const secretHash = ethers.keccak256(ethers.toUtf8Bytes(plain));
-    
+
     // Update persistent ref with computed hash
     if (persistentFormDataRef.current) {
       persistentFormDataRef.current.secretHash = secretHash;
     }
-    
+
     return { secretPlain: plain, secretHash };
   }, [formDataSnapshot]);
 
@@ -318,13 +318,13 @@ export default function CreatePaylinkPage() {
 
   // Make backend API call with persistent form data
   const handleBackendCall = useCallback((
-    claimId: number, 
-    txHash: string, 
+    claimId: number,
+    txHash: string,
     formData: PersistentFormData
   ) => {
     const { secretHash } = ensureSecret(formData);
     const expiryDate = new Date(Date.now() + formData.expiryDays * 24 * 60 * 60 * 1000);
-    
+
     const payload = {
       claimId,
       payerAddress: address!,
@@ -513,326 +513,337 @@ export default function CreatePaylinkPage() {
   }, [watchedValues.expiryDays, formDataSnapshot?.expiryDays]);
 
   // Get the secret plain text to display (prefer snapshot during loading)
-  const displaySecretPlain = formDataSnapshot?.secretPlain || 
-    persistentFormDataRef.current?.secretPlain || 
+  const displaySecretPlain = formDataSnapshot?.secretPlain ||
+    persistentFormDataRef.current?.secretPlain ||
     secretPlain;
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto my-10">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Token Selection */}
-        <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--muted)" }}>
-            Select Token
-          </label>
-          <Controller
-            name="selectedToken"
-            control={control}
-            render={({ field }) => (
-              <select {...field} className="input" disabled={isLoading}>
-                {Object.entries(TOKENS).map(([key, token]) => (
-                  <option key={key} value={key}>
-                    {token.name} ({token.symbol})
-                    {token.isNative && " - Native"}
-                  </option>
-                ))}
-              </select>
-            )}
-          />
-          {currentToken && (
-            <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
-              {currentToken.isNative
-                ? "Native CELO - no approval required"
-                : "ERC20 Token - approval may be required"}
-            </p>
-          )}
-        </div>
+    <div className="container flex flex-col items-center justify-center py-12">
+      <div className="mb-8">
+        <h2 className="text-4xl font-bold mb-2">
+          Create <span className="gradient-text">Paylink</span>
+        </h2>
+        <p className="text-[var(--text-muted)]">
+          Secure payment links on the Celo blockchain
+        </p>
+      </div>
 
-        {/* Amount */}
-        <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--muted)" }}>
-            Amount ({currentToken?.symbol})
-          </label>
-          <Controller
-            name="amount"
-            control={control}
-            render={({ field }) => (
-              <input
-                {...field}
-                className="input"
-                placeholder="e.g. 10.00"
-                disabled={isLoading}
-                type="number"
-                step="any"
-                min="0"
-              />
-            )}
-          />
-          {errors.amount && (
-            <p className="text-red-400 text-sm mt-1">{errors.amount.message}</p>
-          )}
-          {hasInsufficientBalance && (
-            <p className="text-red-400 text-sm mt-1">
-              Insufficient {currentToken?.symbol} balance
-            </p>
-          )}
-          {!currentToken?.isNative && tokenBalance && currentToken && (
-            <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
-              Balance: {ethers.formatUnits(String(tokenBalance), currentToken.decimals)} {currentToken.symbol}
-            </p>
-          )}
-        </div>
-
-        {/* Expiry */}
-        <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--muted)" }}>
-            Expiry (days)
-          </label>
-          <Controller
-            name="expiryDays"
-            control={control}
-            render={({ field }) => (
-              <input
-                {...field}
-                type="number"
-                min={1}
-                max={365}
-                className="input"
-                disabled={isLoading}
-                onChange={(e) => field.onChange(Number(e.target.value))}
-              />
-            )}
-          />
-          {errors.expiryDays && (
-            <p className="text-red-400 text-sm mt-1">{errors.expiryDays.message}</p>
-          )}
-          <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
-            After expiry, the payer can reclaim unclaimed funds. Expires: {expiryDateString}
-          </p>
-        </div>
-
-        {/* Optional recipient */}
-        <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: "var(--muted)" }}>
-            Recipient (optional)
-          </label>
-          <Controller
-            name="recipient"
-            control={control}
-            render={({ field }) => (
-              <input
-                {...field}
-                className="input"
-                placeholder="0xabc... (leave blank to allow anyone)"
-                disabled={isLoading}
-              />
-            )}
-          />
-          {errors.recipient && (
-            <p className="text-red-400 text-sm mt-1">{errors.recipient.message}</p>
-          )}
-          <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
-            If provided, only this address can claim the paylink.
-          </p>
-        </div>
-
-        {/* Secret toggle */}
-        <div>
-          <label className="inline-flex items-center gap-3">
+      <div className="glass-card max-w-2xl">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Token Selection */}
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: "var(--muted)" }}>
+              Select Token
+            </label>
             <Controller
-              name="useSecret"
+              name="selectedToken"
+              control={control}
+              render={({ field }) => (
+                <select {...field} className="input" disabled={isLoading}>
+                  {Object.entries(TOKENS).map(([key, token]) => (
+                    <option key={key} value={key}>
+                      {token.name} ({token.symbol})
+                      {token.isNative && " - Native"}
+                    </option>
+                  ))}
+                </select>
+              )}
+            />
+            {currentToken && (
+              <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
+                {currentToken.isNative
+                  ? "Native CELO - no approval required"
+                  : "ERC20 Token - approval may be required"}
+              </p>
+            )}
+          </div>
+
+          {/* Amount */}
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: "var(--muted)" }}>
+              Amount ({currentToken?.symbol})
+            </label>
+            <Controller
+              name="amount"
               control={control}
               render={({ field }) => (
                 <input
-                  type="checkbox"
-                  checked={field.value}
-                  onChange={field.onChange}
+                  {...field}
+                  className="input"
+                  placeholder="e.g. 10.00"
+                  disabled={isLoading}
+                  type="number"
+                  step="any"
+                  min="0"
+                />
+              )}
+            />
+            {errors.amount && (
+              <p className="text-red-400 text-sm mt-1">{errors.amount.message}</p>
+            )}
+            {hasInsufficientBalance && (
+              <p className="text-red-400 text-sm mt-1">
+                Insufficient {currentToken?.symbol} balance
+              </p>
+            )}
+            {!currentToken?.isNative && tokenBalance && currentToken && (
+              <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
+                Balance: {ethers.formatUnits(String(tokenBalance), currentToken.decimals)} {currentToken.symbol}
+              </p>
+            )}
+          </div>
+
+          {/* Expiry */}
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: "var(--muted)" }}>
+              Expiry (days)
+            </label>
+            <Controller
+              name="expiryDays"
+              control={control}
+              render={({ field }) => (
+                <input
+                  {...field}
+                  type="number"
+                  min={1}
+                  max={365}
+                  className="input"
+                  disabled={isLoading}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                />
+              )}
+            />
+            {errors.expiryDays && (
+              <p className="text-red-400 text-sm mt-1">{errors.expiryDays.message}</p>
+            )}
+            <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
+              After expiry, the payer can reclaim unclaimed funds. Expires: {expiryDateString}
+            </p>
+          </div>
+
+          {/* Optional recipient */}
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: "var(--muted)" }}>
+              Recipient (optional)
+            </label>
+            <Controller
+              name="recipient"
+              control={control}
+              render={({ field }) => (
+                <input
+                  {...field}
+                  className="input"
+                  placeholder="0xabc... (leave blank to allow anyone)"
                   disabled={isLoading}
                 />
               )}
             />
-            <span style={{ color: "var(--muted)" }}>Protect with a secret (optional)</span>
-          </label>
-        </div>
+            {errors.recipient && (
+              <p className="text-red-400 text-sm mt-1">{errors.recipient.message}</p>
+            )}
+            <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
+              If provided, only this address can claim the paylink.
+            </p>
+          </div>
 
-        {useSecret && (
-          <div className="space-y-2">
-            <label className="block text-sm font-medium mb-2" style={{ color: "var(--muted)" }}>
-              Secret
-            </label>
-            <div className="flex gap-3">
+          {/* Secret toggle */}
+          <div>
+            <label className="inline-flex items-center gap-3">
               <Controller
-                name="secretPlain"
+                name="useSecret"
                 control={control}
                 render={({ field }) => (
                   <input
-                    {...field}
-                    className="input flex-1"
-                    placeholder="Custom secret (optional)"
+                    type="checkbox"
+                    checked={field.value}
+                    onChange={field.onChange}
                     disabled={isLoading}
-                    onChange={(e) => {
-                      field.onChange(e.target.value);
-                      setValue("isCustomSecret", true);
-                    }}
                   />
                 )}
               />
-              <button
-                type="button"
-                onClick={generateRandomSecret}
+              <span style={{ color: "var(--muted)" }}>Protect with a secret (optional)</span>
+            </label>
+          </div>
+
+          {useSecret && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--muted)" }}>
+                Secret
+              </label>
+              <div className="flex gap-3">
+                <Controller
+                  name="secretPlain"
+                  control={control}
+                  render={({ field }) => (
+                    <input
+                      {...field}
+                      className="input flex-1"
+                      placeholder="Custom secret (optional)"
+                      disabled={isLoading}
+                      onChange={(e) => {
+                        field.onChange(e.target.value);
+                        setValue("isCustomSecret", true);
+                      }}
+                    />
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={generateRandomSecret}
+                  className="btn-ghost"
+                  disabled={isLoading}
+                >
+                  Auto-generate
+                </button>
+              </div>
+              <p className="text-sm" style={{ color: "var(--muted)" }}>
+                The secret will be shown once after you create the link. Do not share it publicly unless you want anyone to claim.
+              </p>
+            </div>
+          )}
+
+          {/* Approval Notice */}
+          {!currentToken?.isNative && (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                You need to approve the contract to spend your {currentToken?.symbol} tokens before creating the claim.
+              </p>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={isLoading || hasInsufficientBalance || !address}
+            >
+              {!address
+                ? "Connect Wallet"
+                : isApproving
+                  ? "Approving..."
+                  : isCreating || isWaitingCreation
+                    ? "Creating Claim..."
+                    : backendMutation.isPending
+                      ? "Finalizing..."
+                      : "Create Paylink"}
+            </button>
+
+            {txHash && (
+              <a
+                href={getExplorerTxUrl(42220, txHash)} // Celo Mainnet chain ID
+                target="_blank"
+                rel="noreferrer"
                 className="btn-ghost"
-                disabled={isLoading}
               >
-                Auto-generate
+                View Transaction
+              </a>
+            )}
+          </div>
+        </form>
+
+        {/* Success: show link + secret + QR */}
+        {claimLink && formDataSnapshot && (
+          <div className="mt-6 card">
+            <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--text)" }}>
+              Paylink created successfully!
+            </h3>
+            <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
+              Share this link with your recipient
+            </p>
+
+            <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+              <input className="input flex-1" readOnly value={claimLink} />
+              <button
+                className="btn-ghost"
+                onClick={() => copyToClipboard(claimLink, "Link copied to clipboard!")}
+              >
+                Copy Link
               </button>
             </div>
-            <p className="text-sm" style={{ color: "var(--muted)" }}>
-              The secret will be shown once after you create the link. Do not share it publicly unless you want anyone to claim.
-            </p>
-          </div>
-        )}
 
-        {/* Approval Notice */}
-        {!currentToken?.isNative && (
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800">
-              You need to approve the contract to spend your {currentToken?.symbol} tokens before creating the claim.
-            </p>
-          </div>
-        )}
-
-        {/* Submit Button */}
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={isLoading || hasInsufficientBalance || !address}
-          >
-            {!address
-              ? "Connect Wallet"
-              : isApproving
-                ? "Approving..."
-                : isCreating || isWaitingCreation
-                  ? "Creating Claim..."
-                  : backendMutation.isPending
-                    ? "Finalizing..."
-                    : "Create Paylink"}
-          </button>
-
-          {txHash && (
-            <a
-              href={getExplorerTxUrl(44787, txHash)} // Alfajores chain ID
-              target="_blank"
-              rel="noreferrer"
-              className="btn-ghost"
-            >
-              View Transaction
-            </a>
-          )}
-        </div>
-      </form>
-
-      {/* Success: show link + secret + QR */}
-      {claimLink && formDataSnapshot && (
-        <div className="mt-6 card">
-          <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--text)" }}>
-            Paylink created successfully!
-          </h3>
-          <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
-            Share this link with your recipient
-          </p>
-
-          <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
-            <input className="input flex-1" readOnly value={claimLink} />
-            <button
-              className="btn-ghost"
-              onClick={() => copyToClipboard(claimLink, "Link copied to clipboard!")}
-            >
-              Copy Link
-            </button>
-          </div>
-
-          <div className="flex flex-col lg:flex-row gap-6">
-            {formDataSnapshot.useSecret && displaySecretPlain && (
-              <div className="flex-1">
-                <p className="text-sm font-medium mb-2" style={{ color: "var(--text)" }}>
-                  Secret (save this now - shown only once)
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    className="input flex-1 font-mono text-sm"
-                    readOnly
-                    value={displaySecretPlain}
-                  />
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    onClick={() => copyToClipboard(displaySecretPlain, "Secret copied to clipboard!")}
-                  >
-                    Copy
-                  </button>
+            <div className="flex flex-col lg:flex-row gap-6">
+              {formDataSnapshot.useSecret && displaySecretPlain && (
+                <div className="flex-1">
+                  <p className="text-sm font-medium mb-2" style={{ color: "var(--text)" }}>
+                    Secret (save this now - shown only once)
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      className="input flex-1 font-mono text-sm"
+                      readOnly
+                      value={displaySecretPlain}
+                    />
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() => copyToClipboard(displaySecretPlain, "Secret copied to clipboard!")}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <p className="text-xs mt-1 text-amber-600">
+                    ⚠️ Store this secret securely. You won&apos;t see it again!
+                  </p>
                 </div>
-                <p className="text-xs mt-1 text-amber-600">
-                  ⚠️ Store this secret securely. You won&apos;t see it again!
-                </p>
-              </div>
-            )}
+              )}
 
-            <div className="flex-shrink-0">
-              <p className="text-sm font-medium mb-2" style={{ color: "var(--text)" }}>
-                QR Code
-              </p>
-              <div className="p-3 bg-white rounded-lg border">
-                <QRCodeSVG value={claimLink} size={128} />
+              <div className="flex-shrink-0">
+                <p className="text-sm font-medium mb-2" style={{ color: "var(--text)" }}>
+                  QR Code
+                </p>
+                <div className="p-3 bg-white rounded-lg border">
+                  <QRCodeSVG value={claimLink} size={128} />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="mt-6 p-4 bg-green-600 rounded-lg">
-            <h4 className="text-sm font-semibold mb-2" style={{ color: "var(--text)" }}>
-              Claim Details
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-              <div>
-                <span style={{ color: "var(--muted)" }}>Token: </span>
-                <span style={{ color: "var(--text)" }}>
-                  {formDataSnapshot.currentToken.name} ({formDataSnapshot.currentToken.symbol})
-                </span>
-              </div>
-              <div>
-                <span style={{ color: "var(--muted)" }}>Amount: </span>
-                <span style={{ color: "var(--text)" }}>
-                  {formDataSnapshot.amount} {formDataSnapshot.currentToken.symbol}
-                </span>
-              </div>
-              <div>
-                <span style={{ color: "var(--muted)" }}>Expires: </span>
-                <span style={{ color: "var(--text)" }}>{expiryDateString}</span>
-              </div>
-              <div>
-                <span style={{ color: "var(--muted)" }}>Protected: </span>
-                <span style={{ color: "var(--text)" }}>
-                  {formDataSnapshot.useSecret ? "Yes (with secret)" : "No"}
-                </span>
-              </div>
-              {formDataSnapshot.recipient && (
-                <div className="md:col-span-2">
-                  <span style={{ color: "var(--muted)" }}>Restricted to: </span>
-                  <span style={{ color: "var(--text)" }} className="font-mono text-xs">
-                    {formDataSnapshot.recipient}
+            <div className="mt-6 p-4 bg-green-600 rounded-lg">
+              <h4 className="text-sm font-semibold mb-2" style={{ color: "var(--text)" }}>
+                Claim Details
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span style={{ color: "var(--muted)" }}>Token: </span>
+                  <span style={{ color: "var(--text)" }}>
+                    {formDataSnapshot.currentToken.name} ({formDataSnapshot.currentToken.symbol})
                   </span>
                 </div>
-              )}
-              {claimId !== null && (
                 <div>
-                  <span style={{ color: "var(--muted)" }}>Claim ID: </span>
-                  <span style={{ color: "var(--text)" }}>{claimId}</span>
+                  <span style={{ color: "var(--muted)" }}>Amount: </span>
+                  <span style={{ color: "var(--text)" }}>
+                    {formDataSnapshot.amount} {formDataSnapshot.currentToken.symbol}
+                  </span>
                 </div>
-              )}
+                <div>
+                  <span style={{ color: "var(--muted)" }}>Expires: </span>
+                  <span style={{ color: "var(--text)" }}>{expiryDateString}</span>
+                </div>
+                <div>
+                  <span style={{ color: "var(--muted)" }}>Protected: </span>
+                  <span style={{ color: "var(--text)" }}>
+                    {formDataSnapshot.useSecret ? "Yes (with secret)" : "No"}
+                  </span>
+                </div>
+                {formDataSnapshot.recipient && (
+                  <div className="md:col-span-2">
+                    <span style={{ color: "var(--muted)" }}>Restricted to: </span>
+                    <span style={{ color: "var(--text)" }} className="font-mono text-xs">
+                      {formDataSnapshot.recipient}
+                    </span>
+                  </div>
+                )}
+                {claimId !== null && (
+                  <div>
+                    <span style={{ color: "var(--muted)" }}>Claim ID: </span>
+                    <span style={{ color: "var(--text)" }}>{claimId}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

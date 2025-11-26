@@ -65,7 +65,7 @@ export default function Reclaim() {
   useEffect(() => {
     if (reclaimReceipt && claimCode) {
       toast.success("Blockchain reclaim successful!");
-      
+
       // Update backend
       backendMutation.mutate({
         claimCode,
@@ -101,7 +101,7 @@ export default function Reclaim() {
       });
 
       toast.info("Waiting for confirmation...");
-      
+
       const receipt = await waitForTransactionReceipt(config, { hash: hash as `0x${string}` });
 
       if (receipt.status === 'success') {
@@ -118,15 +118,15 @@ export default function Reclaim() {
 
   const getTokenName = (tokenAddress: string) => {
     const normalizedAddress = tokenAddress.toLowerCase();
-    
+
     if (tokenAddress === "0x0000000000000000000000000000000000000000") {
       return "CELO";
     }
-    
+
     const tokenEntry = Object.entries(TOKEN_ADDRESSES).find(
       ([, address]) => address.toLowerCase() === normalizedAddress
     );
-    
+
     return tokenEntry ? tokenEntry[0] : "Unknown";
   };
 
@@ -202,7 +202,7 @@ export default function Reclaim() {
   const isExpired = new Date(claim.expiry) < new Date();
   const isClaimed = claim.status === "CLAIMED";
   const isReclaimed = claim.status === "RECLAIMED";
-  const canReclaim = isExpired && claim.status === "CREATED" && isConnected && 
+  const canReclaim = isExpired && claim.status === "CREATED" && isConnected &&
     claim.payerAddress.toLowerCase() === address?.toLowerCase();
 
   return (
@@ -221,8 +221,8 @@ export default function Reclaim() {
           </button>
         </div>
         <p className="muted">
-          {canReclaim 
-            ? "Review the details and reclaim your funds" 
+          {canReclaim
+            ? "Review the details and reclaim your funds"
             : "View payment details and status"}
         </p>
 
@@ -230,12 +230,12 @@ export default function Reclaim() {
 
         {/* Status Alerts */}
         {isReclaimed && (
-          <div style={{ 
-            padding: "1rem", 
-            marginBottom: "1rem", 
-            background: "rgba(34, 199, 108, 0.15)", 
-            border: "1px solid var(--primary)", 
-            borderRadius: "8px" 
+          <div style={{
+            padding: "1rem",
+            marginBottom: "1rem",
+            background: "rgba(34, 199, 108, 0.15)",
+            border: "1px solid var(--primary)",
+            borderRadius: "8px"
           }}>
             <p style={{ color: "var(--primary)", fontWeight: 600 }}>
               ✓ You have successfully reclaimed this payment
@@ -244,12 +244,12 @@ export default function Reclaim() {
         )}
 
         {isClaimed && (
-          <div style={{ 
-            padding: "1rem", 
-            marginBottom: "1rem", 
-            background: "rgba(59, 130, 246, 0.15)", 
-            border: "1px solid #3b82f6", 
-            borderRadius: "8px" 
+          <div style={{
+            padding: "1rem",
+            marginBottom: "1rem",
+            background: "rgba(59, 130, 246, 0.15)",
+            border: "1px solid #3b82f6",
+            borderRadius: "8px"
           }}>
             <p style={{ color: "#3b82f6", fontWeight: 600 }}>
               ℹ️ This payment was claimed by the recipient
@@ -258,12 +258,12 @@ export default function Reclaim() {
         )}
 
         {!isExpired && claim.status === "CREATED" && (
-          <div style={{ 
-            padding: "1rem", 
-            marginBottom: "1rem", 
-            background: "rgba(255, 193, 7, 0.15)", 
-            border: "1px solid #ffc107", 
-            borderRadius: "8px" 
+          <div style={{
+            padding: "1rem",
+            marginBottom: "1rem",
+            background: "rgba(255, 193, 7, 0.15)",
+            border: "1px solid #ffc107",
+            borderRadius: "8px"
           }}>
             <p style={{ color: "#ffc107", fontWeight: 600 }}>
               ⏳ This payment has not expired yet. Reclaim will be available after expiry.
@@ -272,27 +272,27 @@ export default function Reclaim() {
         )}
 
         {isConnected && isExpired && claim.status === "CREATED" &&
-         claim.payerAddress.toLowerCase() !== address?.toLowerCase() && (
-          <div style={{ 
-            padding: "1rem", 
-            marginBottom: "1rem", 
-            background: "rgba(239, 68, 68, 0.15)", 
-            border: "1px solid #ef4444", 
-            borderRadius: "8px" 
-          }}>
-            <p style={{ color: "#ef4444", fontWeight: 600 }}>
-              ⚠️ Only the original payer can reclaim this payment
-            </p>
-          </div>
-        )}
+          claim.payerAddress.toLowerCase() !== address?.toLowerCase() && (
+            <div style={{
+              padding: "1rem",
+              marginBottom: "1rem",
+              background: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid #ef4444",
+              borderRadius: "8px"
+            }}>
+              <p style={{ color: "#ef4444", fontWeight: 600 }}>
+                ⚠️ Only the original payer can reclaim this payment
+              </p>
+            </div>
+          )}
 
         {!isConnected && claim.status === "CREATED" && (
-          <div style={{ 
-            padding: "1rem", 
-            marginBottom: "1rem", 
-            background: "rgba(255, 193, 7, 0.15)", 
-            border: "1px solid #ffc107", 
-            borderRadius: "8px" 
+          <div style={{
+            padding: "1rem",
+            marginBottom: "1rem",
+            background: "rgba(255, 193, 7, 0.15)",
+            border: "1px solid #ffc107",
+            borderRadius: "8px"
           }}>
             <p style={{ color: "#ffc107", fontWeight: 600 }}>
               Please connect your wallet to reclaim this payment
@@ -301,12 +301,12 @@ export default function Reclaim() {
         )}
 
         {canReclaim && (
-          <div style={{ 
-            padding: "1rem", 
-            marginBottom: "1rem", 
-            background: "rgba(34, 199, 108, 0.15)", 
-            border: "1px solid var(--primary)", 
-            borderRadius: "8px" 
+          <div style={{
+            padding: "1rem",
+            marginBottom: "1rem",
+            background: "rgba(34, 199, 108, 0.15)",
+            border: "1px solid var(--primary)",
+            borderRadius: "8px"
           }}>
             <p style={{ color: "var(--primary)", fontWeight: 600, fontSize: "0.95rem" }}>
               ✓ This payment is eligible for reclaim. You can get your funds back.
@@ -359,24 +359,24 @@ export default function Reclaim() {
                   borderRadius: "6px",
                   fontSize: "0.875rem",
                   fontWeight: 600,
-                  background: claim.status === "CREATED" 
-                    ? isExpired 
-                      ? "rgba(239, 68, 68, 0.15)" 
+                  background: claim.status === "CREATED"
+                    ? isExpired
+                      ? "rgba(239, 68, 68, 0.15)"
                       : "rgba(255, 193, 7, 0.15)"
                     : claim.status === "CLAIMED"
-                    ? "rgba(59, 130, 246, 0.15)"
-                    : claim.status === "RECLAIMED"
-                    ? "rgba(34, 199, 108, 0.15)"
-                    : "rgba(255, 255, 255, 0.1)",
-                  color: claim.status === "CREATED" 
-                    ? isExpired 
-                      ? "#ef4444" 
+                      ? "rgba(59, 130, 246, 0.15)"
+                      : claim.status === "RECLAIMED"
+                        ? "rgba(34, 199, 108, 0.15)"
+                        : "rgba(255, 255, 255, 0.1)",
+                  color: claim.status === "CREATED"
+                    ? isExpired
+                      ? "#ef4444"
                       : "#ffc107"
                     : claim.status === "CLAIMED"
-                    ? "#3b82f6"
-                    : claim.status === "RECLAIMED"
-                    ? "var(--primary)"
-                    : "var(--muted)",
+                      ? "#3b82f6"
+                      : claim.status === "RECLAIMED"
+                        ? "var(--primary)"
+                        : "var(--muted)",
                 }}
               >
                 {claim.status}
@@ -466,31 +466,31 @@ export default function Reclaim() {
               cursor: isProcessing ? "not-allowed" : "pointer",
             }}
           >
-            {isReclaiming 
-              ? "Submitting to blockchain..." 
-              : isWaitingReclaim 
-              ? "Waiting for confirmation..." 
-              : backendMutation.isPending
-              ? "Finalizing..."
-              : `Reclaim ${formatAmount(claim.amount)} ${tokenName}`}
+            {isReclaiming
+              ? "Submitting to blockchain..."
+              : isWaitingReclaim
+                ? "Waiting for confirmation..."
+                : backendMutation.isPending
+                  ? "Finalizing..."
+                  : `Reclaim ${formatAmount(claim.amount)} ${tokenName}`}
           </button>
         )}
 
         {/* Success Message with Transaction Link */}
         {reclaimReceipt && (
-          <div style={{ 
+          <div style={{
             marginTop: "1rem",
-            padding: "1rem", 
-            background: "rgba(34, 199, 108, 0.15)", 
-            border: "1px solid var(--primary)", 
-            borderRadius: "8px" 
+            padding: "1rem",
+            background: "rgba(34, 199, 108, 0.15)",
+            border: "1px solid var(--primary)",
+            borderRadius: "8px"
           }}>
             <p style={{ color: "var(--primary)", fontWeight: 600, marginBottom: "0.5rem" }}>
               ✓ Funds reclaimed successfully!
             </p>
             <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem" }}>
-              <a 
-                href={`https://alfajores.celoscan.io/tx/${reclaimReceipt.transactionHash}`}
+              <a
+                href={`https://celoscan.io/tx/${reclaimReceipt.transactionHash}`}
                 target="_blank"
                 rel="noreferrer"
                 className="btn-ghost"
