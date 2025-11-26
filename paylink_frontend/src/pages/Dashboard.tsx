@@ -3,6 +3,7 @@ import { useAccount } from 'wagmi';
 import { TrendingUp, Activity, Wallet, Clock, Link as LinkIcon } from 'lucide-react';
 import { PaylinkService } from '../services/paylink';
 import { useMemo } from 'react';
+import { NavLink } from 'react-router';
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
@@ -169,9 +170,8 @@ export default function DashboardPage() {
             <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto mb-6">
               Create your first paylink to start sending secure payments on the Celo blockchain
             </p>
-            <a href="/create" className="btn btn-primary">
-              Create Your First Paylink
-            </a>
+            <NavLink to={'/create'} className="btn btn-primary">Create Your First Paylink</NavLink>
+
           </div>
         ) : (
           <div className="space-y-4">

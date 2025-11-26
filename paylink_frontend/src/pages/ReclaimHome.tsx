@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
-import { useNavigate } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import { PaylinkService } from "../services/paylink";
 import { TOKEN_ADDRESSES } from "../libs/constants";
 
@@ -40,15 +40,15 @@ export default function ReclaimHome() {
 
   const getTokenName = (tokenAddress: string) => {
     const normalizedAddress = tokenAddress.toLowerCase();
-    
+
     if (tokenAddress === "0x0000000000000000000000000000000000000000") {
       return "CELO";
     }
-    
+
     const tokenEntry = Object.entries(TOKEN_ADDRESSES).find(
       ([, address]) => address.toLowerCase() === normalizedAddress
     );
-    
+
     return tokenEntry ? tokenEntry[0] : "Unknown";
   };
 
@@ -146,9 +146,9 @@ export default function ReclaimHome() {
 
         {/* Summary Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
-          <div style={{ 
-            padding: "1rem", 
-            background: "rgba(255, 193, 7, 0.1)", 
+          <div style={{
+            padding: "1rem",
+            background: "rgba(255, 193, 7, 0.1)",
             borderRadius: "8px",
             border: "1px solid rgba(255, 193, 7, 0.3)"
           }}>
@@ -156,9 +156,9 @@ export default function ReclaimHome() {
             <p style={{ fontSize: "1.5rem", fontWeight: 700, color: "#ffc107" }}>{activeClaims.length}</p>
           </div>
 
-          <div style={{ 
-            padding: "1rem", 
-            background: "rgba(239, 68, 68, 0.1)", 
+          <div style={{
+            padding: "1rem",
+            background: "rgba(239, 68, 68, 0.1)",
             borderRadius: "8px",
             border: "1px solid rgba(239, 68, 68, 0.3)"
           }}>
@@ -166,9 +166,9 @@ export default function ReclaimHome() {
             <p style={{ fontSize: "1.5rem", fontWeight: 700, color: "#ef4444" }}>{reclaimableClaims.length}</p>
           </div>
 
-          <div style={{ 
-            padding: "1rem", 
-            background: "rgba(34, 199, 108, 0.1)", 
+          <div style={{
+            padding: "1rem",
+            background: "rgba(34, 199, 108, 0.1)",
             borderRadius: "8px",
             border: "1px solid rgba(34, 199, 108, 0.3)"
           }}>
@@ -182,9 +182,8 @@ export default function ReclaimHome() {
             <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>📭</div>
             <h3 style={{ marginBottom: "0.5rem" }}>No Payment Links Found</h3>
             <p className="muted">You haven't created any payment links yet.</p>
-            <a href="/create" className="btn btn-primary" style={{ marginTop: "1.5rem", display: "inline-block" }}>
-              Create Your First Paylink
-            </a>
+            <NavLink to={'/create'} className="btn btn-primary">Create Your First Paylink</NavLink>
+
           </div>
         ) : (
           <>
@@ -201,7 +200,7 @@ export default function ReclaimHome() {
                       <div
                         key={claim.claimId}
                         className="card"
-                        style={{ 
+                        style={{
                           padding: "1rem",
                           cursor: "pointer",
                           border: "2px solid rgba(239, 68, 68, 0.3)",
@@ -256,7 +255,7 @@ export default function ReclaimHome() {
                       <div
                         key={claim.claimId}
                         className="card"
-                        style={{ 
+                        style={{
                           padding: "1rem",
                           cursor: "pointer",
                           transition: "transform 0.2s ease"
@@ -315,7 +314,7 @@ export default function ReclaimHome() {
                       <div
                         key={claim.claimId}
                         className="card"
-                        style={{ 
+                        style={{
                           padding: "1rem",
                           cursor: "pointer",
                           opacity: 0.8,
