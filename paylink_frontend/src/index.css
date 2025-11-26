@@ -57,6 +57,15 @@ body,
   -webkit-text-size-adjust: 100%;
 }
 
+html {
+  background: var(--bg-primary);
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
 body {
   font-family: 'Space Mono', 'Courier New', monospace;
   -webkit-font-smoothing: antialiased;

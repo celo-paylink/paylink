@@ -4,6 +4,8 @@ import { ArrowRight, Coins, Share2, Shield } from 'lucide-react';
 import StepCard from '../components/step-card';
 
 export default function HomePage() {
+  const [isMobile, setIsMobile] = useState(false);
+
   // Responsive spacing configuration
   const [spacing, setSpacing] = useState({
     horizontalGap: 20,
@@ -12,8 +14,11 @@ export default function HomePage() {
 
   useEffect(() => {
     const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+
       // Reduce spacing by 50% on mobile (< 768px)
-      if (window.innerWidth < 768) {
+      if (mobile) {
         setSpacing({
           horizontalGap: 10,
           verticalStep: 7.5
@@ -67,7 +72,7 @@ export default function HomePage() {
   return (
     <div
       className="scroll-snap-container"
-      style={{
+      style={isMobile ? undefined : {
         height: '100vh',
         overflowY: 'scroll',
         scrollSnapType: 'y mandatory',
@@ -77,7 +82,7 @@ export default function HomePage() {
       {/* Hero Section - Full Screen */}
       <section
         className="min-h-screen flex items-center justify-center container px-4 md:px-6"
-        style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+        style={isMobile ? undefined : { scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <div className="max-w-4xl mx-auto text-center fade-in">
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 leading-tight px-2">
@@ -110,7 +115,7 @@ export default function HomePage() {
       {/* Features Section - Full Screen */}
       <section
         className="min-h-screen flex flex-col items-center mt-12 container px-4 md:px-6 py-8 md:py-0"
-        style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
+        style={isMobile ? undefined : { scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
       >
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 md:mb-12 px-2">
           How it <span className="gradient-text-green">Works</span>
@@ -132,7 +137,7 @@ export default function HomePage() {
       {/* Footer - CLI Console Style */}
       <footer
         className="border-t border-[var(--border-primary)] py-12 bg-[var(--bg-secondary)]"
-        style={{ scrollSnapAlign: 'start', minHeight: '100vh', display: 'flex', alignItems: 'center' }}
+        style={isMobile ? { minHeight: '100vh', display: 'flex', alignItems: 'center' } : { scrollSnapAlign: 'start', minHeight: '100vh', display: 'flex', alignItems: 'center' }}
       >
         <div className="container">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
