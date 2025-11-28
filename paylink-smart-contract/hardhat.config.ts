@@ -30,18 +30,9 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    hardhatMainnet: {
-      type: "edr-simulated",
-      chainType: "l1",
-    },
-    hardhatOp: {
-      type: "edr-simulated",
-      chainType: "op",
-    },
-    celoAlfajores: {
+    celo: {
       type: "http",
-      chainType: "l1",
-      url: configVariable("CELO_ALFAJORES_RPC_URL"),
+      url: configVariable("CELO_RPC_URL"),
       accounts: [configVariable("PRIVATE_KEY")],
     },
   },
