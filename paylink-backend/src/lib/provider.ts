@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from "./contract";
 
-const RPC = "https://alfajores-forno.celo-testnet.org";
+const RPC = "https://forno.celo.org";
 export const provider = new ethers.JsonRpcProvider(RPC);
 
 export function getPaylinkContract() {
