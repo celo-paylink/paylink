@@ -429,7 +429,7 @@ export default function CreatePaylinkPage() {
         const result = await handleApprove(formSnapshot);
         if (result) {
           hash = await createClaimAsync({
-            address: CONTRACT_ADDRESS as `0x${string}`,
+            address: CONTRACT_ADDRESS,
             abi: CONTRACT_ABI,
             functionName: "createClaimERC20",
             args: [
@@ -450,11 +450,9 @@ export default function CreatePaylinkPage() {
           }
         }
       }
-    } catch (error: Error | unknown) {
-      console.error('Create claim error:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error occurred';
+    } catch (error: Error | any) {
+      const message = error.cause.cause.shortMessage || 'Unknown error occurred';
       toast.error(`Failed to create claim: ${message}`);
-      throw error;
     }
   }, [
     address,

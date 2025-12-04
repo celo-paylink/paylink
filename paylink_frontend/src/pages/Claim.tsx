@@ -47,10 +47,8 @@ export default function Claim() {
     resolver: zodResolver(claimSchema),
   });
 
-  // Contract write hook
   const { writeContractAsync: claimAsync, isPending: isClaiming } = useWriteContract();
 
-  // Wait for transaction receipt
   const { isLoading: isWaitingClaim, data: claimReceipt } = useWaitForTransactionReceipt({
     hash: claimTxHash as `0x${string}`,
     query: {
@@ -58,7 +56,6 @@ export default function Claim() {
     },
   });
 
-  // Backend mutation to update claim status
   const backendMutation = useMutation({
     mutationFn: async (payload: { claimCode: string; txHashClaim: string }) => {
       const response = await PaylinkService.confirmClaim(payload);
@@ -75,12 +72,10 @@ export default function Claim() {
     },
   });
 
-  // Handle claim receipt
   useEffect(() => {
     if (claimReceipt && claimCode) {
       toast.success("Blockchain claim successful!");
 
-      // Update backend
       backendMutation.mutate({
         claimCode,
         txHashClaim: claimReceipt.transactionHash
@@ -88,7 +83,6 @@ export default function Claim() {
     }
   }, [claimReceipt, claimCode]);
 
-  // Handle smart contract claim
   const handleClaimContract = async (secret?: string) => {
     if (!claim) {
       toast.error("Claim data not available");
@@ -118,9 +112,9 @@ export default function Claim() {
       } else {
         toast.error("Transaction failed");
       }
-    } catch (error: Error | unknown) {
-      console.error('Claim error:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error occurred';
+    } catch (error: Error | any) {
+      console.log(error);
+      const message = error.cause.cause.shortMessage || 'Unknown error occurred';
       toast.error(`Failed to claim: ${message}`);
     }
   };
@@ -136,12 +130,10 @@ export default function Claim() {
   const getTokenName = (address: string) => {
     const normalizedAddress = address.toLowerCase();
 
-    // Check for native token (CELO)
     if (address === "0x0000000000000000000000000000000000000000") {
       return "CELO";
     }
 
-    // Check against known token addresses
     const tokenEntry = Object.entries(TOKEN_ADDRESSES).find(
       ([, tokenAddress]) => tokenAddress.toLowerCase() === normalizedAddress
     );
@@ -236,7 +228,6 @@ export default function Claim() {
           </div>
         )}
 
-        {/* Claim Details */}
         <div style={{ display: "grid", gap: "1rem" }}>
           <div>
             <label className="muted" style={{ fontSize: "0.875rem", display: "block", marginBottom: "0.25rem" }}>
@@ -326,10 +317,8 @@ export default function Claim() {
 
         <div className="spacer-lg"></div>
 
-        {/* Claim Actions - Only show if not claimed and not expired */}
         {!isClaimed && !isExpired && (
           <>
-            {/* Secret Form */}
             {claim.requiresSecret && (
               <form onSubmit={handleSubmit(onSubmit)}>
                 <div style={{ marginBottom: "1rem" }}>
@@ -397,7 +386,6 @@ export default function Claim() {
           </>
         )}
 
-        {/* Success Message with Transaction Link */}
         {claimReceipt && (
           <div style={{
             marginTop: "1rem",
