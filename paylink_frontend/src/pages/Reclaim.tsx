@@ -1,78 +1,83 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from '@wagmi/core';
+import { ethers } from "ethers";
 import { toast } from "react-toastify";
-import { useState, useEffect } from "react";
-import { PaylinkService } from "../services/paylink";
+import { useState, useMemo } from "react";
 import { TOKEN_ADDRESSES } from "../libs/constants";
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from "../libs/contract";
 import { config } from "../libs/config";
 
-const getClaim = async (claimCode: string) => {
-  try {
-    const res = await PaylinkService.getClaim(claimCode);
-    return res.data;
-  } catch (error) {
-    console.error("Error fetching claim:", error);
-    throw error;
-  }
-};
-
 export default function Reclaim() {
-  const { claimCode } = useParams();
+  const { claimCode: claimIdParam } = useParams();
   const navigate = useNavigate();
   const { address, isConnected } = useAccount();
-  const queryClient = useQueryClient();
+  const [isProcessing, setIsProcessing] = useState(false);
   const [reclaimTxHash, setReclaimTxHash] = useState<string | null>(null);
+  const [reclaimSuccess, setReclaimSuccess] = useState(false);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["reclaim", claimCode],
-    queryFn: () => getClaim(claimCode as string),
-    enabled: !!claimCode,
-  });
+  // Parse claim ID from URL parameter
+  const claimId = useMemo(() => {
+    if (!claimIdParam) return null;
+    // Handle both "claim-123" and "123" formats
+    const match = claimIdParam.match(/\d+$/);
+    return match ? parseInt(match[0]) : null;
+  }, [claimIdParam]);
 
-  // Contract write hook
-  const { writeContractAsync: reclaimAsync, isPending: isReclaiming } = useWriteContract();
-
-  // Wait for transaction receipt
-  const { isLoading: isWaitingReclaim, data: reclaimReceipt } = useWaitForTransactionReceipt({
-    hash: reclaimTxHash as `0x${string}`,
+  // Fetch claim data from smart contract using claim ID
+  const {
+    data: claimData,
+    isLoading,
+    error,
+    refetch
+  } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: "getClaimPublic",
+    args: claimId !== null ? [BigInt(claimId)] : undefined,
     query: {
-      enabled: !!reclaimTxHash,
-    },
-  });
-
-  // Backend mutation to update claim status
-  const backendMutation = useMutation({
-    mutationFn: async (payload: { claimCode: string; txHashReclaim: string }) => {
-      const response = await PaylinkService.reclaimClaim(payload);
-      return response.data;
-    },
-    onSuccess: () => {
-      toast.success("Funds reclaimed successfully!");
-      queryClient.invalidateQueries({ queryKey: ["reclaim", claimCode] });
-      queryClient.invalidateQueries({ queryKey: ["userClaims", address] });
-    },
-    onError: (error: Error | { response?: { data?: { message?: string } } }) => {
-      console.error('Backend error:', error);
-      const message = 'response' in error ? error.response?.data?.message : (error instanceof Error ? error.message : 'Unknown error');
-      toast.error(`Backend error: ${message}`);
-    },
-  });
-
-  // Handle reclaim receipt
-  useEffect(() => {
-    if (reclaimReceipt && claimCode) {
-      toast.success("Blockchain reclaim successful!");
-
-      // Update backend
-      backendMutation.mutate({
-        claimCode,
-        txHashReclaim: reclaimReceipt.transactionHash,
-      });
+      enabled: claimId !== null,
     }
-  }, [reclaimReceipt, claimCode]);
+  });
+
+  const { writeContractAsync: reclaimAsync } = useWriteContract();
+
+  // Parse claim data
+  const claim = useMemo(() => {
+    if (!claimData || claimId === null) return null;
+
+    const [
+      payer,
+      token,
+      amount,
+      expiry,
+      claimed,
+      statusEnum,
+      recipientMasked,
+      requiresSecret,
+      isNative
+    ] = claimData as [string, string, bigint, bigint, boolean, number, string, boolean, boolean];
+
+    let status: 'CREATED' | 'CLAIMED' | 'RECLAIMED' = 'CREATED';
+    if (statusEnum === 1) {
+      status = 'CLAIMED';
+    } else if (statusEnum === 2) {
+      status = 'RECLAIMED';
+    }
+
+    return {
+      claimId: claimId,
+      payerAddress: payer,
+      token,
+      amount: amount.toString(),
+      expiry: Number(expiry) * 1000,
+      status,
+      claimed,
+      recipientMasked: recipientMasked === ethers.ZeroAddress ? null : recipientMasked,
+      requiresSecret,
+      isNative,
+    };
+  }, [claimData, claimId]);
 
   const handleReclaimContract = async () => {
     if (!isConnected || !address) {
@@ -91,6 +96,7 @@ export default function Reclaim() {
     }
 
     try {
+      setIsProcessing(true);
       toast.info("Submitting reclaim to blockchain...");
 
       const hash = await reclaimAsync({
@@ -106,20 +112,32 @@ export default function Reclaim() {
 
       if (receipt.status === 'success') {
         setReclaimTxHash(hash);
+        setReclaimSuccess(true);
+        toast.success("Funds reclaimed successfully!");
+        
+        setTimeout(() => {
+          refetch();
+        }, 2000);
       } else {
         toast.error("Transaction failed");
       }
-    } catch (error: Error | unknown) {
+    } catch (error: any) {
       console.error('Reclaim error:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error occurred';
+      const message = error?.cause?.cause?.shortMessage || 
+                     error?.cause?.shortMessage ||
+                     error?.shortMessage ||
+                     error?.message || 
+                     'Unknown error occurred';
       toast.error(`Failed to reclaim: ${message}`);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const getTokenName = (tokenAddress: string) => {
     const normalizedAddress = tokenAddress.toLowerCase();
 
-    if (tokenAddress === "0x0000000000000000000000000000000000000000") {
+    if (tokenAddress === ethers.ZeroAddress || tokenAddress === "0x0000000000000000000000000000000000000000") {
       return "CELO";
     }
 
@@ -131,12 +149,15 @@ export default function Reclaim() {
   };
 
   const formatAmount = (amount: string, decimals: number = 18) => {
-    const value = parseFloat(amount) / Math.pow(10, decimals);
-    return value.toFixed(6);
+    try {
+      return ethers.formatUnits(amount, decimals);
+    } catch {
+      return "0";
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString();
   };
 
   const copyToClipboard = async (text: string, label: string) => {
@@ -144,29 +165,17 @@ export default function Reclaim() {
       await navigator.clipboard.writeText(text);
       toast.success(`${label} copied!`);
     } catch (error) {
-      console.log(error)
+      console.log(error);
       toast.error("Failed to copy");
     }
   };
 
-  const isProcessing = isReclaiming || isWaitingReclaim || backendMutation.isPending;
-
-  if (isLoading) {
+  if (claimId === null) {
     return (
       <div className="container" style={{ paddingTop: "2rem", maxWidth: "48rem" }}>
         <div className="card">
-          <p className="muted">Loading claim details...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container" style={{ paddingTop: "2rem", maxWidth: "48rem" }}>
-        <div className="card">
-          <h2 style={{ color: "#ef4444" }}>Failed to load claim</h2>
-          <p className="muted">Please check the claim code and try again.</p>
+          <h2 style={{ color: "#ef4444" }}>Invalid Claim ID</h2>
+          <p className="muted">The claim ID provided is invalid.</p>
           <button
             className="btn btn-ghost"
             onClick={() => navigate("/reclaim")}
@@ -179,13 +188,24 @@ export default function Reclaim() {
     );
   }
 
-  const claim = data?.data?.claim;
-
-  if (!claim) {
+  if (isLoading) {
     return (
       <div className="container" style={{ paddingTop: "2rem", maxWidth: "48rem" }}>
         <div className="card">
-          <p className="muted">No claim data available.</p>
+          <p className="muted">Loading claim details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !claim) {
+    return (
+      <div className="container" style={{ paddingTop: "2rem", maxWidth: "48rem" }}>
+        <div className="card">
+          <h2 style={{ color: "#ef4444" }}>Failed to load claim</h2>
+          <p className="muted">
+            {error ? "Claim does not exist or there was an error loading it." : "No claim data available."}
+          </p>
           <button
             className="btn btn-ghost"
             onClick={() => navigate("/reclaim")}
@@ -318,15 +338,15 @@ export default function Reclaim() {
         <div style={{ display: "grid", gap: "1rem" }}>
           <div>
             <label className="muted" style={{ fontSize: "0.875rem", display: "block", marginBottom: "0.25rem" }}>
-              Claim Code
+              Claim ID
             </label>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <p style={{ fontFamily: "monospace", fontSize: "1.125rem", fontWeight: 600, flex: 1 }}>
-                {claim.claimCode}
+                #{claim.claimId}
               </p>
               <button
                 className="btn btn-ghost"
-                onClick={() => copyToClipboard(claim.claimCode, "Claim code")}
+                onClick={() => copyToClipboard(claim.claimId.toString(), "Claim ID")}
                 style={{ padding: "0.25rem 0.5rem", fontSize: "0.875rem" }}
               >
                 Copy
@@ -365,18 +385,14 @@ export default function Reclaim() {
                       : "rgba(255, 193, 7, 0.15)"
                     : claim.status === "CLAIMED"
                       ? "rgba(59, 130, 246, 0.15)"
-                      : claim.status === "RECLAIMED"
-                        ? "rgba(34, 199, 108, 0.15)"
-                        : "rgba(255, 255, 255, 0.1)",
+                      : "rgba(34, 199, 108, 0.15)",
                   color: claim.status === "CREATED"
                     ? isExpired
                       ? "#ef4444"
                       : "#ffc107"
                     : claim.status === "CLAIMED"
                       ? "#3b82f6"
-                      : claim.status === "RECLAIMED"
-                        ? "var(--primary)"
-                        : "var(--muted)",
+                      : "var(--primary)",
                 }}
               >
                 {claim.status}
@@ -435,27 +451,18 @@ export default function Reclaim() {
 
           <div>
             <label className="muted" style={{ fontSize: "0.875rem", display: "block", marginBottom: "0.25rem" }}>
-              Payment Link
+              Token Type
             </label>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <p style={{ fontSize: "0.875rem", flex: 1, wordBreak: "break-all" }}>
-                {window.location.origin}/claim/{claim.claimCode}
-              </p>
-              <button
-                className="btn btn-ghost"
-                onClick={() => copyToClipboard(`${window.location.origin}/claim/${claim.claimCode}`, "Link")}
-                style={{ padding: "0.25rem 0.5rem", fontSize: "0.875rem" }}
-              >
-                Copy
-              </button>
-            </div>
+            <p style={{ fontSize: "0.9rem" }}>
+              {claim.isNative ? "Native CELO" : `ERC20 Token (${tokenName})`}
+            </p>
           </div>
         </div>
 
         <div className="spacer-lg"></div>
 
         {/* Reclaim Action */}
-        {canReclaim && (
+        {canReclaim && !reclaimSuccess && (
           <button
             className="btn btn-primary"
             onClick={handleReclaimContract}
@@ -466,18 +473,14 @@ export default function Reclaim() {
               cursor: isProcessing ? "not-allowed" : "pointer",
             }}
           >
-            {isReclaiming
-              ? "Submitting to blockchain..."
-              : isWaitingReclaim
-                ? "Waiting for confirmation..."
-                : backendMutation.isPending
-                  ? "Finalizing..."
-                  : `Reclaim ${formatAmount(claim.amount)} ${tokenName}`}
+            {isProcessing
+              ? "Processing..."
+              : `Reclaim ${formatAmount(claim.amount)} ${tokenName}`}
           </button>
         )}
 
         {/* Success Message with Transaction Link */}
-        {reclaimReceipt && (
+        {reclaimSuccess && reclaimTxHash && (
           <div style={{
             marginTop: "1rem",
             padding: "1rem",
@@ -488,9 +491,12 @@ export default function Reclaim() {
             <p style={{ color: "var(--primary)", fontWeight: 600, marginBottom: "0.5rem" }}>
               ✓ Funds reclaimed successfully!
             </p>
+            <p style={{ fontSize: "0.875rem", marginBottom: "0.75rem" }}>
+              The funds have been returned to your wallet.
+            </p>
             <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem" }}>
               <a
-                href={`https://celoscan.io/tx/${reclaimReceipt.transactionHash}`}
+                href={`https://celoscan.io/tx/${reclaimTxHash}`}
                 target="_blank"
                 rel="noreferrer"
                 className="btn-ghost"

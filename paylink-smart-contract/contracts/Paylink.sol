@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.28;
 
-/// @title  Paylink — shareable payment links with optional recipient/secret restrictions
-/// @notice Allows a payer to lock native CELO or ERC20 tokens as a "paylink" that can be claimed by a recipient.
-/// @dev Uses OpenZeppelin libraries for safety (SafeERC20 + ReentrancyGuard + Ownable).
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -15,11 +12,9 @@ interface IERC20Decimals {
 contract Paylink is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
-    // Address representing native CELO (similar to how WETH uses address(0))
     address public constant NATIVE_CELO = address(0);
 
-    constructor() Ownable(msg.sender) {
-    }
+    constructor() Ownable(msg.sender) {}
 
     struct Claim {
         address payer;
@@ -27,13 +22,20 @@ contract Paylink is ReentrancyGuard, Ownable {
         uint256 amount;
         uint256 expiry;
         bool claimed;
+        ClaimStatus status;
         address recipient;
         bytes32 secretHash;
     }
 
+    enum ClaimStatus {
+        CREATED,
+        CLAIMED,
+        RECLAIMED
+    }
+
     mapping(uint256 => Claim) public claims;
-    mapping(string => uint256) public codeToClaimId; 
-    mapping(address => uint256[]) private userClaims; 
+    mapping(string => uint256) public codeToClaimId;
+    mapping(address => uint256[]) private userClaims;
     uint256 public nextClaimId = 1;
     bool public paused;
 
@@ -65,9 +67,6 @@ contract Paylink is ReentrancyGuard, Ownable {
         _;
     }
 
-    /// @notice Create a claim with native CELO
-    /// @dev Send CELO value with the transaction
-    /// @param code Unique string identifier for this claim
     function createClaimNative(
         uint256 expiry,
         address recipient,
@@ -84,6 +83,7 @@ contract Paylink is ReentrancyGuard, Ownable {
             amount: msg.value,
             expiry: expiry,
             claimed: false,
+            status: ClaimStatus.CREATED,
             recipient: recipient,
             secretHash: secretHash
         });
@@ -92,12 +92,19 @@ contract Paylink is ReentrancyGuard, Ownable {
 
         userClaims[msg.sender].push(id);
 
-        emit ClaimCreated(id, msg.sender, NATIVE_CELO, msg.value, expiry, recipient, secretHash, code);
+        emit ClaimCreated(
+            id,
+            msg.sender,
+            NATIVE_CELO,
+            msg.value,
+            expiry,
+            recipient,
+            secretHash,
+            code
+        );
         return id;
     }
 
-    /// @notice Create a claim with ERC20 tokens
-    /// @param code Unique string identifier for this claim
     function createClaimERC20(
         address token,
         uint256 amount,
@@ -119,6 +126,7 @@ contract Paylink is ReentrancyGuard, Ownable {
             amount: amount,
             expiry: expiry,
             claimed: false,
+            status: ClaimStatus.CREATED,
             recipient: recipient,
             secretHash: secretHash
         });
@@ -127,12 +135,23 @@ contract Paylink is ReentrancyGuard, Ownable {
 
         userClaims[msg.sender].push(id);
 
-        emit ClaimCreated(id, msg.sender, token, amount, expiry, recipient, secretHash, code);
+        emit ClaimCreated(
+            id,
+            msg.sender,
+            token,
+            amount,
+            expiry,
+            recipient,
+            secretHash,
+            code
+        );
         return id;
     }
 
-    /// @notice Claim tokens or native CELO
-    function claim(uint256 id, bytes calldata secret) external nonReentrant notPaused {
+    function claim(
+        uint256 id,
+        bytes calldata secret
+    ) external nonReentrant notPaused {
         Claim storage c = claims[id];
         require(!c.claimed, "already claimed");
         require(c.amount > 0, "invalid claim");
@@ -148,20 +167,18 @@ contract Paylink is ReentrancyGuard, Ownable {
         }
 
         c.claimed = true;
+        c.status = ClaimStatus.CLAIMED;
 
         if (c.token == NATIVE_CELO) {
-            // Transfer native CELO
             (bool success, ) = payable(msg.sender).call{value: c.amount}("");
             require(success, "CELO transfer failed");
         } else {
-            // Transfer ERC20 token
             IERC20(c.token).safeTransfer(msg.sender, c.amount);
         }
 
         emit Claimed(id, msg.sender, c.amount);
     }
 
-    /// @notice Reclaim expired tokens/CELO back to payer
     function reclaim(uint256 id) external nonReentrant {
         Claim storage c = claims[id];
         require(!c.claimed, "already claimed");
@@ -170,13 +187,12 @@ contract Paylink is ReentrancyGuard, Ownable {
         require(msg.sender == c.payer, "not payer");
 
         c.claimed = true;
+        c.status = ClaimStatus.RECLAIMED;
 
         if (c.token == NATIVE_CELO) {
-            // Transfer native CELO back to payer
             (bool success, ) = payable(c.payer).call{value: c.amount}("");
             require(success, "CELO transfer failed");
         } else {
-            // Transfer ERC20 token back to payer
             IERC20(c.token).safeTransfer(c.payer, c.amount);
         }
 
@@ -193,31 +209,38 @@ contract Paylink is ReentrancyGuard, Ownable {
         emit Unpaused(msg.sender);
     }
 
-    /// @notice Emergency withdraw ERC20 tokens (owner only)
-    function emergencyWithdrawERC20(address token, uint256 amount, address to) external onlyOwner {
+    function emergencyWithdrawERC20(
+        address token,
+        uint256 amount,
+        address to
+    ) external onlyOwner {
         require(to != address(0), "invalid recipient");
         require(token != address(0), "use emergencyWithdrawNative for CELO");
         IERC20(token).safeTransfer(to, amount);
     }
 
-    /// @notice Emergency withdraw native CELO (owner only)
-    function emergencyWithdrawNative(uint256 amount, address payable to) external onlyOwner {
+    function emergencyWithdrawNative(
+        uint256 amount,
+        address payable to
+    ) external onlyOwner {
         require(to != address(0), "invalid recipient");
         require(amount <= address(this).balance, "insufficient balance");
-        
+
         (bool success, ) = to.call{value: amount}("");
         require(success, "CELO transfer failed");
     }
 
-    /// @notice Get claim ID by unique code
-    function getClaimIdByCode(string calldata code) external view returns (uint256) {
+    function getClaimIdByCode(
+        string calldata code
+    ) external view returns (uint256) {
         uint256 id = codeToClaimId[code];
         require(id != 0, "invalid code");
         return id;
     }
 
-    /// @notice Get claim by unique code
-    function getClaimByCode(string calldata code)
+    function getClaimByCode(
+        string calldata code
+    )
         external
         view
         returns (
@@ -227,6 +250,7 @@ contract Paylink is ReentrancyGuard, Ownable {
             uint256 amount,
             uint256 expiry,
             bool claimed,
+            ClaimStatus status,
             address recipientMasked,
             bool requiresSecret,
             bool isNative
@@ -234,20 +258,22 @@ contract Paylink is ReentrancyGuard, Ownable {
     {
         id = codeToClaimId[code];
         require(id != 0, "invalid code");
-        
+
         Claim storage c = claims[id];
         payer = c.payer;
         token = c.token;
         amount = c.amount;
         expiry = c.expiry;
         claimed = c.claimed;
+        status = c.status;
         recipientMasked = c.recipient;
         requiresSecret = (c.secretHash != bytes32(0));
         isNative = (c.token == NATIVE_CELO);
     }
 
-    /// @notice Get public claim information
-    function getClaimPublic(uint256 id)
+    function getClaimPublic(
+        uint256 id
+    )
         external
         view
         returns (
@@ -256,6 +282,7 @@ contract Paylink is ReentrancyGuard, Ownable {
             uint256 amount,
             uint256 expiry,
             bool claimed,
+            ClaimStatus status,
             address recipientMasked,
             bool requiresSecret,
             bool isNative
@@ -267,37 +294,33 @@ contract Paylink is ReentrancyGuard, Ownable {
         amount = c.amount;
         expiry = c.expiry;
         claimed = c.claimed;
+        status = c.status;
         recipientMasked = c.recipient;
         requiresSecret = (c.secretHash != bytes32(0));
         isNative = (c.token == NATIVE_CELO);
     }
 
-    /// @notice Check if a claim uses native CELO
     function isNativeClaim(uint256 id) external view returns (bool) {
         return claims[id].token == NATIVE_CELO;
     }
 
-    /// @notice Get contract's native CELO balance
     function getNativeBalance() external view returns (uint256) {
         return address(this).balance;
     }
 
-    /// @notice Get all claim IDs created by a user
-    function getUserClaims(address user) external view returns (uint256[] memory) {
+    function getUserClaims(
+        address user
+    ) external view returns (uint256[] memory) {
         return userClaims[user];
     }
 
-    /// @notice Get count of claims created by a user
     function getUserClaimCount(address user) external view returns (uint256) {
         return userClaims[user].length;
     }
 
-    /// @notice Allow contract to receive CELO
     receive() external payable {
-        // Contract can receive CELO, but only through createClaimNative or direct sends
     }
 
-    /// @notice Fallback function
     fallback() external payable {
         revert("Function not found");
     }

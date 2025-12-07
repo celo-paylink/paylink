@@ -1,5 +1,5 @@
 
-  export const CONTRACT_ADDRESS = "0xf770E68AAEC88373397d214e52C8BD6CF4bd2C39";
+  export const CONTRACT_ADDRESS = "0x73FA6cBE3A144eE24F55BE07EA4Ac4fF4cDD074e";
   export const CONTRACT_ABI = [
   {
     "inputs": [],
@@ -88,6 +88,12 @@
         "internalType": "bytes32",
         "name": "secretHash",
         "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "code",
+        "type": "string"
       }
     ],
     "name": "ClaimCreated",
@@ -259,6 +265,11 @@
         "type": "bool"
       },
       {
+        "internalType": "enum Paylink.ClaimStatus",
+        "name": "status",
+        "type": "uint8"
+      },
+      {
         "internalType": "address",
         "name": "recipient",
         "type": "address"
@@ -267,6 +278,25 @@
         "internalType": "bytes32",
         "name": "secretHash",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "codeToClaimId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -298,6 +328,11 @@
         "internalType": "bytes32",
         "name": "secretHash",
         "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "code",
+        "type": "string"
       }
     ],
     "name": "createClaimERC20",
@@ -327,6 +362,11 @@
         "internalType": "bytes32",
         "name": "secretHash",
         "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "code",
+        "type": "string"
       }
     ],
     "name": "createClaimNative",
@@ -384,6 +424,89 @@
   {
     "inputs": [
       {
+        "internalType": "string",
+        "name": "code",
+        "type": "string"
+      }
+    ],
+    "name": "getClaimByCode",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "payer",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expiry",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "claimed",
+        "type": "bool"
+      },
+      {
+        "internalType": "enum Paylink.ClaimStatus",
+        "name": "status",
+        "type": "uint8"
+      },
+      {
+        "internalType": "address",
+        "name": "recipientMasked",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "requiresSecret",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "isNative",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "code",
+        "type": "string"
+      }
+    ],
+    "name": "getClaimIdByCode",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "id",
         "type": "uint256"
@@ -417,6 +540,11 @@
         "type": "bool"
       },
       {
+        "internalType": "enum Paylink.ClaimStatus",
+        "name": "status",
+        "type": "uint8"
+      },
+      {
         "internalType": "address",
         "name": "recipientMasked",
         "type": "address"
@@ -443,6 +571,44 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getUserClaimCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getUserClaims",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
       }
     ],
     "stateMutability": "view",

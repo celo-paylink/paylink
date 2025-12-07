@@ -1,47 +1,108 @@
-import { useQuery } from "@tanstack/react-query";
-import { useAccount } from "wagmi";
+import { useAccount, useReadContract, useReadContracts } from "wagmi";
 import { NavLink, useNavigate } from "react-router";
-import { PaylinkService } from "../services/paylink";
+import { useMemo } from "react";
+import { ethers } from "ethers";
+import { CONTRACT_ABI, CONTRACT_ADDRESS } from "../libs/contract";
 import { TOKEN_ADDRESSES } from "../libs/constants";
-
-interface Claim {
-  claimId: number;
-  claimCode: string;
-  payerAddress: string;
-  token: string;
-  amount: string;
-  expiry: string;
-  recipientMasked: string | null;
-  requiresSecret: boolean;
-  status: string;
-  txHashCreate: string;
-  createdAt: string;
-}
-
-const getUserClaims = async () => {
-  try {
-    const res = await PaylinkService.getUserClaims();
-    return res.data;
-  } catch (error) {
-    console.error("Error fetching claims:", error);
-    throw error;
-  }
-};
 
 export default function ReclaimHome() {
   const { address, isConnected } = useAccount();
   const navigate = useNavigate();
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["userClaims", address],
-    queryFn: getUserClaims,
-    enabled: !!address && isConnected,
+  // First, get the array of claim IDs for this user
+  const {
+    isLoading: isLoadingClaimIds, 
+    data: claimIds,
+    error: claimIdsError
+  } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: "getUserClaims",
+    args: [address as `0x${string}`],
+    query: {
+      enabled: isConnected && !!address,
+    }
   });
+
+  // Prepare contracts array for batch reading claim details
+  const claimContracts = useMemo(() => {
+    if (!claimIds || !Array.isArray(claimIds) || claimIds.length === 0) {
+      return [];
+    }
+
+    return claimIds.map((claimId: bigint) => ({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      abi: CONTRACT_ABI,
+      functionName: 'getClaimPublic',
+      args: [claimId],
+    }));
+  }, [claimIds]);
+
+  // Batch read all claim details
+  const {
+    data: claimsData,
+    isLoading: isLoadingClaims,
+  } = useReadContracts({
+    contracts: claimContracts,
+    query: {
+      enabled: claimContracts.length > 0,
+    }
+  });
+
+  // Transform the data into a usable format
+  const claims = useMemo(() => {
+    if (!claimIds || !claimsData || !Array.isArray(claimIds)) {
+      return [];
+    }
+
+    return claimIds.map((claimId: bigint, index: number) => {
+      const claimData = claimsData[index];
+      
+      if (!claimData || claimData.status === 'failure' || !claimData.result) {
+        return null;
+      }
+
+      const [
+        payer,
+        token,
+        amount,
+        expiry,
+        claimed,
+        statusEnum,
+        recipientMasked,
+        requiresSecret,
+        isNative
+      ] = claimData.result as unknown as [string, string, bigint, bigint, boolean, number, string, boolean, boolean];
+
+      let status: 'CREATED' | 'CLAIMED' | 'RECLAIMED' = 'CREATED';
+      if (statusEnum === 1) {
+        status = 'CLAIMED';
+      } else if (statusEnum === 2) {
+        status = 'RECLAIMED';
+      }
+
+      const expiryTimestamp = Number(expiry);
+
+      return {
+        claimId: Number(claimId),
+        payer,
+        token,
+        amount: amount.toString(),
+        expiry: expiryTimestamp * 1000,
+        status,
+        claimed,
+        recipient: recipientMasked,
+        requiresSecret,
+        isNative,
+        createdAt: Date.now() - (index * 1000 * 60 * 60),
+      };
+    }).filter(Boolean);
+  }, [claimIds, claimsData]);
 
   const getTokenName = (tokenAddress: string) => {
     const normalizedAddress = tokenAddress.toLowerCase();
 
-    if (tokenAddress === "0x0000000000000000000000000000000000000000") {
+    if (tokenAddress === ethers.ZeroAddress || tokenAddress === "0x0000000000000000000000000000000000000000") {
       return "CELO";
     }
 
@@ -53,19 +114,22 @@ export default function ReclaimHome() {
   };
 
   const formatAmount = (amount: string, decimals: number = 18) => {
-    const value = parseFloat(amount) / Math.pow(10, decimals);
-    return value.toFixed(4);
+    try {
+      return ethers.formatUnits(amount, decimals);
+    } catch {
+      return "0";
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString();
   };
 
-  const isExpired = (expiryDate: string) => {
-    return new Date(expiryDate) < new Date();
+  const isExpired = (expiryTimestamp: number) => {
+    return new Date(expiryTimestamp) < new Date();
   };
 
-  const canReclaim = (claim: Claim) => {
+  const canReclaim = (claim: any) => {
     return isExpired(claim.expiry) && claim.status === "CREATED";
   };
 
@@ -81,6 +145,9 @@ export default function ReclaimHome() {
         return { bg: "rgba(255, 255, 255, 0.1)", color: "var(--muted)" };
     }
   };
+
+  const isLoading = isLoadingClaimIds || isLoadingClaims;
+  const error = claimIdsError;
 
   if (!isConnected) {
     return (
@@ -129,10 +196,10 @@ export default function ReclaimHome() {
     );
   }
 
-  const claims: Claim[] = data?.data?.claims || [];
-  const reclaimableClaims = claims.filter(claim => canReclaim(claim));
-  const activeClaims = claims.filter(claim => claim.status === "CREATED" && !isExpired(claim.expiry));
-  const completedClaims = claims.filter(claim => claim.status === "CLAIMED" || claim.status === "RECLAIMED");
+  const validClaims = claims.filter((claim): claim is NonNullable<typeof claim> => claim !== null);
+  const reclaimableClaims = validClaims.filter(claim => canReclaim(claim));
+  const activeClaims = validClaims.filter(claim => claim.status === "CREATED" && !isExpired(claim.expiry));
+  const completedClaims = validClaims.filter(claim => claim.status === "CLAIMED" || claim.status === "RECLAIMED");
 
   return (
     <div className="container" style={{ paddingTop: "2rem", maxWidth: "64rem" }}>
@@ -182,8 +249,9 @@ export default function ReclaimHome() {
             <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>📭</div>
             <h3 style={{ marginBottom: "0.5rem" }}>No Payment Links Found</h3>
             <p className="muted">You haven't created any payment links yet.</p>
-            <NavLink to={'/create'} className="btn btn-primary">Create Your First Paylink</NavLink>
-
+            <NavLink to="/create" className="btn btn-primary" style={{ marginTop: "1rem" }}>
+              Create Your First Paylink
+            </NavLink>
           </div>
         ) : (
           <>
@@ -206,7 +274,7 @@ export default function ReclaimHome() {
                           border: "2px solid rgba(239, 68, 68, 0.3)",
                           transition: "transform 0.2s ease, border-color 0.2s ease"
                         }}
-                        onClick={() => navigate(`/reclaim/${claim.claimCode}`)}
+                        onClick={() => navigate(`/reclaim/claim-${claim.claimId}`)}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.transform = "translateY(-2px)";
                           e.currentTarget.style.borderColor = "#ef4444";
@@ -221,8 +289,8 @@ export default function ReclaimHome() {
                             <p style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--primary)", marginBottom: "0.25rem" }}>
                               {formatAmount(claim.amount)} {tokenName}
                             </p>
-                            <p className="muted" style={{ fontSize: "0.875rem", fontFamily: "monospace" }}>
-                              {claim.claimCode}
+                            <p className="muted" style={{ fontSize: "0.875rem" }}>
+                              Claim #{claim.claimId}
                             </p>
                           </div>
                           <div style={{ textAlign: "right" }}>
@@ -260,7 +328,7 @@ export default function ReclaimHome() {
                           cursor: "pointer",
                           transition: "transform 0.2s ease"
                         }}
-                        onClick={() => navigate(`/reclaim/${claim.claimCode}`)}
+                        onClick={() => navigate(`/reclaim/claim-${claim.claimId}`)}
                         onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
                         onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
                       >
@@ -269,8 +337,8 @@ export default function ReclaimHome() {
                             <p style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.25rem" }}>
                               {formatAmount(claim.amount)} {tokenName}
                             </p>
-                            <p className="muted" style={{ fontSize: "0.875rem", fontFamily: "monospace" }}>
-                              {claim.claimCode}
+                            <p className="muted" style={{ fontSize: "0.875rem" }}>
+                              Claim #{claim.claimId}
                             </p>
                           </div>
                           <div style={{ textAlign: "right" }}>
@@ -320,7 +388,7 @@ export default function ReclaimHome() {
                           opacity: 0.8,
                           transition: "opacity 0.2s ease, transform 0.2s ease"
                         }}
-                        onClick={() => navigate(`/reclaim/${claim.claimCode}`)}
+                        onClick={() => navigate(`/reclaim/claim-${claim.claimId}`)}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.opacity = "1";
                           e.currentTarget.style.transform = "translateY(-2px)";
@@ -335,8 +403,8 @@ export default function ReclaimHome() {
                             <p style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.25rem" }}>
                               {formatAmount(claim.amount)} {tokenName}
                             </p>
-                            <p className="muted" style={{ fontSize: "0.875rem", fontFamily: "monospace" }}>
-                              {claim.claimCode}
+                            <p className="muted" style={{ fontSize: "0.875rem" }}>
+                              Claim #{claim.claimId}
                             </p>
                           </div>
                           <div style={{ textAlign: "right" }}>

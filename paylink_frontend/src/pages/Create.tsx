@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
-import { waitForTransactionReceipt } from '@wagmi/core';
+import { useAccount, useWriteContract, useReadContract } from "wagmi";
+import { readContract, waitForTransactionReceipt } from '@wagmi/core';
 import { ethers } from "ethers";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { z } from "zod";
 import { QRCodeSVG } from "qrcode.react";
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from "../libs/contract";
-import { PaylinkService } from "../services/paylink";
 import { config } from "../libs/config";
 import { CHAIN_EXPLORERS, ERC20_ABI, TOKEN_ADDRESSES } from "../libs/constants";
+import { generateClaimCode } from "../utils/claim-code";
 
 const ZERO_ADDRESS = ethers.ZeroAddress;
 const ZERO_BYTES32 = ethers.ZeroHash;
@@ -39,6 +38,7 @@ interface PersistentFormData {
   secretHash: string;
   rawAmount: string;
   currentToken: TokenInfo;
+  claimCode?: string;
 }
 
 // Token configurations
@@ -109,7 +109,7 @@ function getExplorerTxUrl(chainId?: number, txHash?: string): string {
   if (!txHash) return "#";
   const base = chainId && CHAIN_EXPLORERS[chainId as keyof typeof CHAIN_EXPLORERS]
     ? CHAIN_EXPLORERS[chainId as keyof typeof CHAIN_EXPLORERS]
-    : "https://explorer/tx/";
+    : "https://explorer.celo.org/mainnet/tx/";
   return `${base}${txHash}`;
 }
 
@@ -130,15 +130,14 @@ function useTransactionStatus() {
 }
 
 export default function CreatePaylinkPage() {
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
 
   const {
     txHash,
     setTxHash,
-    createTxHash,
     setCreateTxHash,
     claimId,
-    setClaimId
+    setClaimId,
   } = useTransactionStatus();
 
   // Form state
@@ -155,6 +154,7 @@ export default function CreatePaylinkPage() {
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors, isSubmitting },
     getValues,
   } = useForm<FormData>({
@@ -224,41 +224,6 @@ export default function CreatePaylinkPage() {
   const { writeContractAsync: createClaimAsync, isPending: isCreating } = useWriteContract();
   const { writeContractAsync: approveAsync } = useWriteContract();
 
-  // Wait for transaction receipt
-  const { isLoading: isWaitingCreation, data: createReceipt } = useWaitForTransactionReceipt({
-    hash: createTxHash as `0x${string}`,
-    query: {
-      enabled: !!createTxHash,
-    },
-  });
-
-  // Handle create receipt
-  useEffect(() => {
-    if (createReceipt && persistentFormDataRef.current) {
-      toast.success("Claim created successfully!");
-      setTxHash(createReceipt.transactionHash);
-      handleParseClaimId(createReceipt, persistentFormDataRef.current);
-    }
-  }, [createReceipt]);
-
-  // Backend mutation with persistent data
-  const backendMutation = useMutation({
-    mutationFn: async (payload: Record<string, string | number | Date | null>) => {
-      const response = await PaylinkService.createLink(payload);
-      return response.data;
-    },
-    onSuccess: (data) => {
-      const link = data?.data.link || `${window.location.origin}/claim/${data?.data.claim?.claimCode}`;
-      setClaimLink(link);
-      toast.success("Paylink ready to share!");
-    },
-    onError: (error: Error | { response?: { data?: { message?: string } } }) => {
-      console.error('Backend error:', error);
-      const message = 'response' in error ? error.response?.data?.message : (error instanceof Error ? error.message : 'Unknown error');
-      toast.error(`Backend error: ${message}`);
-    },
-  });
-
   // Generate or validate secret using persistent data
   const ensureSecret = useCallback((formData?: PersistentFormData) => {
     const data = formData || persistentFormDataRef.current || formDataSnapshot;
@@ -284,60 +249,30 @@ export default function CreatePaylinkPage() {
     return { secretPlain: plain, secretHash };
   }, [formDataSnapshot]);
 
-  // Parse claim ID from transaction receipt
-  const handleParseClaimId = useCallback((
-    receipt: { logs: { address: string; topics: string[]; data: string; }[]; transactionHash: string; },
-    formData: PersistentFormData
-  ) => {
-    let parsedClaimId: number | null = null;
-
+  // Extract claim ID from transaction logs
+  const extractClaimIdFromReceipt = useCallback((receipt: any): number | null => {
     try {
+      // Look for ClaimCreated event in logs
+      const claimCreatedTopic = ethers.id("ClaimCreated(uint256,address,address,uint256,uint256,address,bytes32,string)");
+
       for (const log of receipt.logs) {
-        if (log.address.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) continue;
-
-        const iface = new ethers.Interface(CONTRACT_ABI);
-        const parsed = iface.parseLog(log);
-
-        if (parsed && parsed.name === "ClaimCreated") {
-          parsedClaimId = Number(parsed.args[0]);
-          break;
+        if (log.topics[0] === claimCreatedTopic) {
+          // First indexed parameter is the claim ID
+          const claimIdHex = log.topics[1];
+          return parseInt(claimIdHex, 16);
         }
       }
     } catch (error) {
-      console.error('Error parsing claim ID:', error);
+      console.error('Error extracting claim ID:', error);
     }
-
-    if (parsedClaimId === null) {
-      toast.error("ClaimCreated event not found in transaction receipt");
-      return;
-    }
-
-    setClaimId(parsedClaimId);
-    handleBackendCall(parsedClaimId, receipt.transactionHash, formData);
+    return null;
   }, []);
 
-  // Make backend API call with persistent form data
-  const handleBackendCall = useCallback((
-    claimId: number,
-    txHash: string,
-    formData: PersistentFormData
-  ) => {
-    const { secretHash } = ensureSecret(formData);
-    const expiryDate = new Date(Date.now() + formData.expiryDays * 24 * 60 * 60 * 1000);
-
-    const payload = {
-      claimId,
-      payerAddress: address!,
-      token: formData.currentToken.address,
-      amount: formData.rawAmount,
-      expiry: expiryDate,
-      recipient: formData.recipient || null,
-      secretHash: secretHash === ZERO_BYTES32 ? null : secretHash,
-      txHashCreate: txHash,
-    };
-
-    backendMutation.mutate(payload);
-  }, [ensureSecret, address, backendMutation]);
+  // Generate claim link
+  const generateClaimLink = useCallback((claimCode: string): string => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/claim/${claimCode}`;
+  }, []);
 
   // Handle token approval
   const handleApprove = useCallback(async (formData: PersistentFormData): Promise<string | undefined> => {
@@ -377,7 +312,35 @@ export default function CreatePaylinkPage() {
       return;
     }
 
-    // Capture current form data before any async operations
+    let claimCode: string = "";
+    let isUnique = false;
+
+    try {
+      for (let i = 0; i < 5; i++) {
+        claimCode = generateClaimCode();
+        const data = await readContract(config, {
+          address: CONTRACT_ADDRESS,
+          abi: CONTRACT_ABI,
+          functionName: 'codeToClaimId',
+          args: [claimCode]
+        });
+
+        if (Number(data) === 0 || data === 0n) {
+          isUnique = true;
+          break;
+        }
+      }
+
+      if (!isUnique) {
+        toast.error("Failed to generate unique claim code. Please try again.");
+        return;
+      }
+    } catch (error) {
+      toast.error("Failed to verify claim code uniqueness");
+      console.error(error);
+      return;
+    }
+
     const currentFormData = getValues();
     const formSnapshot: PersistentFormData = {
       selectedToken: currentFormData.selectedToken,
@@ -390,13 +353,20 @@ export default function CreatePaylinkPage() {
       secretHash: "",
       rawAmount: rawAmount.toString(),
       currentToken,
+      claimCode,
     };
 
     // Store in ref immediately
     persistentFormDataRef.current = formSnapshot;
 
     try {
-      const { secretHash } = ensureSecret(formSnapshot);
+      const { secretPlain: finalSecret, secretHash } = ensureSecret(formSnapshot);
+
+      // Update snapshot with final secret
+      formSnapshot.secretPlain = finalSecret;
+      formSnapshot.secretHash = secretHash;
+      persistentFormDataRef.current = formSnapshot;
+
       const expiryTs = Math.floor(Date.now() / 1000) + formSnapshot.expiryDays * 24 * 60 * 60;
       const recipientAddr = (formSnapshot.recipient && ethers.isAddress(formSnapshot.recipient))
         ? formSnapshot.recipient
@@ -413,21 +383,37 @@ export default function CreatePaylinkPage() {
             BigInt(expiryTs),
             recipientAddr as `0x${string}`,
             secretHash as `0x${string}`,
+            claimCode
           ],
           value: BigInt(formSnapshot.rawAmount),
         });
-
         toast.info("Creating native CELO claim. Please wait...");
-
         const receipt = await waitForTransactionReceipt(config, { hash: hash as `0x${string}` });
 
         if (receipt.status === 'success') {
           toast.success("Claim creation successful!");
           setCreateTxHash(hash);
+          setTxHash(hash);
+
+          // Extract claim ID from receipt
+          const extractedClaimId = extractClaimIdFromReceipt(receipt);
+          if (extractedClaimId !== null) {
+            setClaimId(extractedClaimId);
+          }
+
+          // Generate and set claim link
+          const link = generateClaimLink(claimCode);
+          setClaimLink(link);
+
+          // Update form data snapshot for display
+          setFormDataSnapshot(formSnapshot);
+
+          // Reset form for next claim
+          reset();
         }
       } else {
-        const result = await handleApprove(formSnapshot);
-        if (result) {
+        const approvalResult = await handleApprove(formSnapshot);
+        if (approvalResult) {
           hash = await createClaimAsync({
             address: CONTRACT_ADDRESS,
             abi: CONTRACT_ABI,
@@ -438,21 +424,39 @@ export default function CreatePaylinkPage() {
               BigInt(expiryTs),
               recipientAddr as `0x${string}`,
               secretHash as `0x${string}`,
+              claimCode
             ],
           });
           toast.info("Creating ERC20 claim. Please wait...");
-
           const receipt = await waitForTransactionReceipt(config, { hash: hash as `0x${string}` });
 
           if (receipt.status === 'success') {
             toast.success("Claim ERC20 creation successful!");
             setCreateTxHash(hash);
+            setTxHash(hash);
+
+            // Extract claim ID from receipt
+            const extractedClaimId = extractClaimIdFromReceipt(receipt);
+            if (extractedClaimId !== null) {
+              setClaimId(extractedClaimId);
+            }
+
+            // Generate and set claim link
+            const link = generateClaimLink(claimCode);
+            setClaimLink(link);
+
+            // Update form data snapshot for display
+            setFormDataSnapshot(formSnapshot);
+
+            // Reset form for next claim
+            reset();
           }
         }
       }
-    } catch (error: Error | any) {
-      const message = error.cause.cause.shortMessage || 'Unknown error occurred';
+    } catch (error: any) {
+      const message = error?.cause?.cause?.shortMessage || error?.message || 'Unknown error occurred';
       toast.error(`Failed to create claim: ${message}`);
+      console.error('Claim creation error:', error);
     }
   }, [
     address,
@@ -462,7 +466,12 @@ export default function CreatePaylinkPage() {
     createClaimAsync,
     handleApprove,
     setCreateTxHash,
+    setTxHash,
+    setClaimId,
+    extractClaimIdFromReceipt,
+    generateClaimLink,
     getValues,
+    reset,
   ]);
 
   // Form submission handler
@@ -493,7 +502,7 @@ export default function CreatePaylinkPage() {
   }, []);
 
   // Calculate loading state
-  const isLoading = isSubmitting || isCreating || isWaitingCreation || backendMutation.isPending || isApproving;
+  const isLoading = isSubmitting || isCreating || isApproving;
 
   // Check for insufficient balance
   const hasInsufficientBalance = useMemo(() => {
@@ -720,16 +729,14 @@ export default function CreatePaylinkPage() {
                 ? "Connect Wallet"
                 : isApproving
                   ? "Approving..."
-                  : isCreating || isWaitingCreation
+                  : isCreating
                     ? "Creating Claim..."
-                    : backendMutation.isPending
-                      ? "Finalizing..."
-                      : "Create Paylink"}
+                    : "Create Paylink"}
             </button>
 
             {txHash && (
               <a
-                href={getExplorerTxUrl(42220, txHash)} // Celo Mainnet chain ID
+                href={getExplorerTxUrl(chainId || 42220, txHash)}
                 target="_blank"
                 rel="noreferrer"
                 className="btn-ghost"
