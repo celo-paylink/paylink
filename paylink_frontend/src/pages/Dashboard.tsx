@@ -59,7 +59,6 @@ export default function DashboardPage() {
         return null;
       }
 
-      // Updated to match the new contract return values including ClaimStatus
       const [
         id,
         payer,
@@ -73,7 +72,6 @@ export default function DashboardPage() {
         isNative
       ] = claimData.result as unknown as [number, string, string, bigint, bigint, boolean, number, string, boolean, boolean];
 
-      // Map enum to status string (0=CREATED, 1=CLAIMED, 2=RECLAIMED)
       let status: 'CREATED' | 'CLAIMED' | 'RECLAIMED' = 'CREATED';
       if (statusEnum === 1) {
         status = 'CLAIMED';
@@ -85,21 +83,21 @@ export default function DashboardPage() {
 
       return {
         id,
+        code: claimCode,
         payer,
         token,
         amount: amount.toString(),
-        expiry: expiryTimestamp * 1000, // Convert to milliseconds for JS Date
+        expiry: expiryTimestamp * 1000,
         claimed,
         status,
         recipient: recipientMasked,
         requiresSecret,
         isNative,
-        createdAt: Date.now() - (index * 1000 * 60 * 60), // Approximation since contract doesn't store creation time
+        createdAt: Date.now() - (index * 1000 * 60 * 60), 
       };
     }).filter(Boolean);
   }, [claimCodes, claimsData]);
 
-  // Calculate statistics
   const stats = useMemo(() => {
     const total = claims.length;
     const claimed = claims.filter((claim: any) => claim.status === 'CLAIMED').length;
@@ -108,7 +106,7 @@ export default function DashboardPage() {
       const isExpired = new Date(claim.expiry) < new Date();
       return claim.status === 'CREATED' && !isExpired;
     }).length;
-    const pending = active; // Active and pending are the same
+    const pending = active;
 
     return {
       total,
