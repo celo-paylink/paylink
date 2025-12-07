@@ -9,11 +9,11 @@ export default function ReclaimHome() {
   const { address, isConnected } = useAccount();
   const navigate = useNavigate();
 
-  // First, get the array of claim IDs for this user
+  // Get the array of claim codes for this user
   const {
-    isLoading: isLoadingClaimIds, 
-    data: claimIds,
-    error: claimIdsError
+    isLoading: isLoadingClaimCodes,
+    data: claimCodes,
+    error: claimCodesError
   } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: CONTRACT_ABI,
@@ -26,17 +26,17 @@ export default function ReclaimHome() {
 
   // Prepare contracts array for batch reading claim details
   const claimContracts = useMemo(() => {
-    if (!claimIds || !Array.isArray(claimIds) || claimIds.length === 0) {
+    if (!claimCodes || !Array.isArray(claimCodes) || claimCodes.length === 0) {
       return [];
     }
 
-    return claimIds.map((claimId: bigint) => ({
+    return claimCodes.map((claimCode: string) => ({
       address: CONTRACT_ADDRESS as `0x${string}`,
       abi: CONTRACT_ABI,
-      functionName: 'getClaimPublic',
-      args: [claimId],
+      functionName: 'getClaimByCode',
+      args: [claimCode],
     }));
-  }, [claimIds]);
+  }, [claimCodes]);
 
   // Batch read all claim details
   const {
@@ -51,28 +51,29 @@ export default function ReclaimHome() {
 
   // Transform the data into a usable format
   const claims = useMemo(() => {
-    if (!claimIds || !claimsData || !Array.isArray(claimIds)) {
+    if (!claimCodes || !claimsData || !Array.isArray(claimCodes)) {
       return [];
     }
 
-    return claimIds.map((claimId: bigint, index: number) => {
+    return claimCodes.map((claimCode: string, index: number) => {
       const claimData = claimsData[index];
-      
+
       if (!claimData || claimData.status === 'failure' || !claimData.result) {
         return null;
       }
 
       const [
+        id,
         payer,
         token,
         amount,
         expiry,
         claimed,
         statusEnum,
-        recipientMasked,
+        recipient,
         requiresSecret,
         isNative
-      ] = claimData.result as unknown as [string, string, bigint, bigint, boolean, number, string, boolean, boolean];
+      ] = claimData.result as unknown as [bigint, string, string, bigint, bigint, boolean, number, string, boolean, boolean];
 
       let status: 'CREATED' | 'CLAIMED' | 'RECLAIMED' = 'CREATED';
       if (statusEnum === 1) {
@@ -84,20 +85,20 @@ export default function ReclaimHome() {
       const expiryTimestamp = Number(expiry);
 
       return {
-        claimId: Number(claimId),
+        id: Number(id),
+        code: claimCode,
         payer,
         token,
         amount: amount.toString(),
         expiry: expiryTimestamp * 1000,
         status,
         claimed,
-        recipient: recipientMasked,
+        recipient,
         requiresSecret,
         isNative,
-        createdAt: Date.now() - (index * 1000 * 60 * 60),
       };
     }).filter(Boolean);
-  }, [claimIds, claimsData]);
+  }, [claimCodes, claimsData]);
 
   const getTokenName = (tokenAddress: string) => {
     const normalizedAddress = tokenAddress.toLowerCase();
@@ -115,18 +116,24 @@ export default function ReclaimHome() {
 
   const formatAmount = (amount: string, decimals: number = 18) => {
     try {
-      return ethers.formatUnits(amount, decimals);
+      const formatted = ethers.formatUnits(amount, decimals);
+      // Format with up to 4 decimal places, removing trailing zeros
+      return parseFloat(parseFloat(formatted).toFixed(4)).toString();
     } catch {
       return "0";
     }
   };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString();
+    return new Date(timestamp).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
 
   const isExpired = (expiryTimestamp: number) => {
-    return new Date(expiryTimestamp) < new Date();
+    return Date.now() > expiryTimestamp;
   };
 
   const canReclaim = (claim: any) => {
@@ -136,18 +143,18 @@ export default function ReclaimHome() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "CREATED":
-        return { bg: "rgba(255, 193, 7, 0.15)", color: "#ffc107" };
+        return { bg: "rgba(255, 193, 7, 0.15)", color: "#ffc107", label: "Active" };
       case "CLAIMED":
-        return { bg: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" };
+        return { bg: "rgba(59, 130, 246, 0.15)", color: "#3b82f6", label: "Claimed" };
       case "RECLAIMED":
-        return { bg: "rgba(34, 199, 108, 0.15)", color: "var(--primary)" };
+        return { bg: "rgba(34, 199, 108, 0.15)", color: "var(--primary)", label: "Reclaimed" };
       default:
-        return { bg: "rgba(255, 255, 255, 0.1)", color: "var(--muted)" };
+        return { bg: "rgba(255, 255, 255, 0.1)", color: "var(--muted)", label: "Unknown" };
     }
   };
 
-  const isLoading = isLoadingClaimIds || isLoadingClaims;
-  const error = claimIdsError;
+  const isLoading = isLoadingClaimCodes || isLoadingClaims;
+  const error = claimCodesError;
 
   if (!isConnected) {
     return (
@@ -178,8 +185,18 @@ export default function ReclaimHome() {
   if (isLoading) {
     return (
       <div className="container" style={{ paddingTop: "2rem", maxWidth: "64rem" }}>
-        <div className="card">
-          <p className="muted">Loading your claims...</p>
+        <div className="card" style={{ textAlign: "center", padding: "2rem" }}>
+          <div style={{
+            display: "inline-block",
+            width: "40px",
+            height: "40px",
+            border: "4px solid rgba(255, 255, 255, 0.1)",
+            borderTopColor: "var(--primary)",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite",
+            marginBottom: "1rem"
+          }}></div>
+          <p className="muted">Loading your payment links...</p>
         </div>
       </div>
     );
@@ -188,18 +205,23 @@ export default function ReclaimHome() {
   if (error) {
     return (
       <div className="container" style={{ paddingTop: "2rem", maxWidth: "64rem" }}>
-        <div className="card">
-          <h2 style={{ color: "#ef4444" }}>Failed to load claims</h2>
-          <p className="muted">Please try again later.</p>
+        <div className="card" style={{ textAlign: "center", padding: "2rem" }}>
+          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚠️</div>
+          <h2 style={{ color: "#ef4444", marginBottom: "0.5rem" }}>Failed to Load Claims</h2>
+          <p className="muted">Please try again later or check your connection.</p>
         </div>
       </div>
     );
   }
 
   const validClaims = claims.filter((claim): claim is NonNullable<typeof claim> => claim !== null);
-  const reclaimableClaims = validClaims.filter(claim => canReclaim(claim));
-  const activeClaims = validClaims.filter(claim => claim.status === "CREATED" && !isExpired(claim.expiry));
-  const completedClaims = validClaims.filter(claim => claim.status === "CLAIMED" || claim.status === "RECLAIMED");
+
+  // Sort by ID descending (newest first)
+  const sortedClaims = [...validClaims].sort((a, b) => b.id - a.id);
+
+  const reclaimableClaims = sortedClaims.filter(claim => canReclaim(claim));
+  const activeClaims = sortedClaims.filter(claim => claim.status === "CREATED" && !isExpired(claim.expiry));
+  const completedClaims = sortedClaims.filter(claim => claim.status === "CLAIMED" || claim.status === "RECLAIMED");
 
   return (
     <div className="container" style={{ paddingTop: "2rem", maxWidth: "64rem" }}>
@@ -212,7 +234,12 @@ export default function ReclaimHome() {
         <div className="spacer-lg"></div>
 
         {/* Summary Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: "1rem",
+          marginBottom: "2rem"
+        }}>
           <div style={{
             padding: "1rem",
             background: "rgba(255, 193, 7, 0.1)",
@@ -244,12 +271,14 @@ export default function ReclaimHome() {
           </div>
         </div>
 
-        {claims.length === 0 ? (
+        {validClaims.length === 0 ? (
           <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
             <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>📭</div>
             <h3 style={{ marginBottom: "0.5rem" }}>No Payment Links Found</h3>
-            <p className="muted">You haven't created any payment links yet.</p>
-            <NavLink to="/create" className="btn btn-primary" style={{ marginTop: "1rem" }}>
+            <p className="muted" style={{ marginBottom: "1.5rem" }}>
+              You haven't created any payment links yet.
+            </p>
+            <NavLink to="/create" className="btn btn-primary">
               Create Your First Paylink
             </NavLink>
           </div>
@@ -266,15 +295,15 @@ export default function ReclaimHome() {
                     const tokenName = getTokenName(claim.token);
                     return (
                       <div
-                        key={claim.claimId}
+                        key={claim.id}
                         className="card"
                         style={{
                           padding: "1rem",
                           cursor: "pointer",
                           border: "2px solid rgba(239, 68, 68, 0.3)",
-                          transition: "transform 0.2s ease, border-color 0.2s ease"
+                          transition: "all 0.2s ease"
                         }}
-                        onClick={() => navigate(`/reclaim/claim-${claim.claimId}`)}
+                        onClick={() => navigate(`/reclaim/${claim.code}`)}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.transform = "translateY(-2px)";
                           e.currentTarget.style.borderColor = "#ef4444";
@@ -284,21 +313,49 @@ export default function ReclaimHome() {
                           e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.3)";
                         }}
                       >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-                          <div>
-                            <p style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--primary)", marginBottom: "0.25rem" }}>
+                        <div style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: "1rem"
+                        }}>
+                          <div style={{ flex: 1, minWidth: "200px" }}>
+                            <p style={{
+                              fontSize: "1.25rem",
+                              fontWeight: 700,
+                              color: "var(--primary)",
+                              marginBottom: "0.25rem"
+                            }}>
                               {formatAmount(claim.amount)} {tokenName}
                             </p>
                             <p className="muted" style={{ fontSize: "0.875rem" }}>
-                              Claim #{claim.claimId}
+                              Payment Link #{claim.id}
                             </p>
                           </div>
                           <div style={{ textAlign: "right" }}>
-                            <p style={{ fontSize: "0.875rem", color: "#ef4444", marginBottom: "0.5rem", fontWeight: 600 }}>
-                              Expired {formatDate(claim.expiry)}
+                            <p style={{
+                              fontSize: "0.875rem",
+                              color: "#ef4444",
+                              marginBottom: "0.5rem",
+                              fontWeight: 600
+                            }}>
+                              ⏰ Expired {formatDate(claim.expiry)}
                             </p>
-                            <button className="btn btn-ghost" style={{ padding: "0.25rem 0.75rem", fontSize: "0.875rem" }}>
-                              Reclaim →
+                            <button
+                              className="btn btn-ghost"
+                              style={{
+                                padding: "0.25rem 0.75rem",
+                                fontSize: "0.875rem",
+                                background: "rgba(239, 68, 68, 0.1)",
+                                color: "#ef4444"
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/reclaim/${claim.code}`);
+                              }}
+                            >
+                              Reclaim Funds →
                             </button>
                           </div>
                         </div>
@@ -321,24 +378,32 @@ export default function ReclaimHome() {
                     const statusStyle = getStatusColor(claim.status);
                     return (
                       <div
-                        key={claim.claimId}
+                        key={claim.id}
                         className="card"
                         style={{
                           padding: "1rem",
                           cursor: "pointer",
-                          transition: "transform 0.2s ease"
+                          transition: "all 0.2s ease"
                         }}
-                        onClick={() => navigate(`/reclaim/claim-${claim.claimId}`)}
+                        onClick={() => navigate(`/reclaim/${claim.code}`)}
                         onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
                         onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
                       >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-                          <div>
+                        <div style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: "1rem"
+                        }}>
+                          <div style={{ flex: 1, minWidth: "200px" }}>
                             <p style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.25rem" }}>
                               {formatAmount(claim.amount)} {tokenName}
                             </p>
                             <p className="muted" style={{ fontSize: "0.875rem" }}>
-                              Claim #{claim.claimId}
+                              Payment Link #{claim.id}
+                              {claim.requiresSecret && " 🔒"}
+                              {claim.recipient !== ethers.ZeroAddress && " 👤"}
                             </p>
                           </div>
                           <div style={{ textAlign: "right" }}>
@@ -354,7 +419,7 @@ export default function ReclaimHome() {
                                 marginBottom: "0.5rem"
                               }}
                             >
-                              {claim.status}
+                              {statusStyle.label}
                             </span>
                             <p className="muted" style={{ fontSize: "0.875rem" }}>
                               Expires {formatDate(claim.expiry)}
@@ -380,31 +445,37 @@ export default function ReclaimHome() {
                     const statusStyle = getStatusColor(claim.status);
                     return (
                       <div
-                        key={claim.claimId}
+                        key={claim.id}
                         className="card"
                         style={{
                           padding: "1rem",
                           cursor: "pointer",
-                          opacity: 0.8,
-                          transition: "opacity 0.2s ease, transform 0.2s ease"
+                          opacity: 0.7,
+                          transition: "all 0.2s ease"
                         }}
-                        onClick={() => navigate(`/reclaim/claim-${claim.claimId}`)}
+                        onClick={() => navigate(`/reclaim/${claim.code}`)}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.opacity = "1";
                           e.currentTarget.style.transform = "translateY(-2px)";
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.opacity = "0.8";
+                          e.currentTarget.style.opacity = "0.7";
                           e.currentTarget.style.transform = "translateY(0)";
                         }}
                       >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-                          <div>
+                        <div style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: "1rem"
+                        }}>
+                          <div style={{ flex: 1, minWidth: "200px" }}>
                             <p style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.25rem" }}>
                               {formatAmount(claim.amount)} {tokenName}
                             </p>
                             <p className="muted" style={{ fontSize: "0.875rem" }}>
-                              Claim #{claim.claimId}
+                              Payment Link #{claim.id}
                             </p>
                           </div>
                           <div style={{ textAlign: "right" }}>
@@ -419,7 +490,7 @@ export default function ReclaimHome() {
                                 color: statusStyle.color,
                               }}
                             >
-                              {claim.status}
+                              {statusStyle.label}
                             </span>
                           </div>
                         </div>
@@ -432,6 +503,12 @@ export default function ReclaimHome() {
           </>
         )}
       </div>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

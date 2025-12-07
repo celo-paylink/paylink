@@ -9,9 +9,9 @@ export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   
   const {
-    isLoading: isLoadingClaimIds, 
-    data: claimIds,
-    error: claimIdsError
+    isLoading: isLoadingClaimCodes, 
+    data: claimCodes,
+    error: claimCodesError
   } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: CONTRACT_ABI,
@@ -22,18 +22,20 @@ export default function DashboardPage() {
     }
   });
 
+  console.log(isLoadingClaimCodes, claimCodes, claimCodesError)
+
   const claimContracts = useMemo(() => {
-    if (!claimIds || !Array.isArray(claimIds) || claimIds.length === 0) {
+    if (!claimCodes || !Array.isArray(claimCodes) || claimCodes.length === 0) {
       return [];
     }
 
-    return claimIds.map((claimId: bigint) => ({
+    return claimCodes.map((claimCode: string) => ({
       address: CONTRACT_ADDRESS as `0x${string}`,
       abi: CONTRACT_ABI,
-      functionName: 'getClaimPublic',
-      args: [claimId],
+      functionName: 'getClaimByCode',
+      args: [claimCode],
     }));
-  }, [claimIds]);
+  }, [claimCodes]);
 
   const {
     data: claimsData,
@@ -46,11 +48,11 @@ export default function DashboardPage() {
   });
 
   const claims = useMemo(() => {
-    if (!claimIds || !claimsData || !Array.isArray(claimIds)) {
+    if (!claimCodes || !claimsData || !Array.isArray(claimCodes)) {
       return [];
     }
 
-    return claimIds.map((claimId: bigint, index: number) => {
+    return claimCodes.map((claimCode: bigint, index: number) => {
       const claimData = claimsData[index];
       
       if (!claimData || claimData.status === 'failure' || !claimData.result) {
@@ -59,6 +61,7 @@ export default function DashboardPage() {
 
       // Updated to match the new contract return values including ClaimStatus
       const [
+        id,
         payer,
         token,
         amount,
@@ -68,7 +71,7 @@ export default function DashboardPage() {
         recipientMasked,
         requiresSecret,
         isNative
-      ] = claimData.result as unknown as [string, string, bigint, bigint, boolean, number, string, boolean, boolean];
+      ] = claimData.result as unknown as [number, string, string, bigint, bigint, boolean, number, string, boolean, boolean];
 
       // Map enum to status string (0=CREATED, 1=CLAIMED, 2=RECLAIMED)
       let status: 'CREATED' | 'CLAIMED' | 'RECLAIMED' = 'CREATED';
@@ -81,7 +84,7 @@ export default function DashboardPage() {
       const expiryTimestamp = Number(expiry);
 
       return {
-        id: Number(claimId),
+        id,
         payer,
         token,
         amount: amount.toString(),
@@ -94,7 +97,7 @@ export default function DashboardPage() {
         createdAt: Date.now() - (index * 1000 * 60 * 60), // Approximation since contract doesn't store creation time
       };
     }).filter(Boolean);
-  }, [claimIds, claimsData]);
+  }, [claimCodes, claimsData]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -116,8 +119,8 @@ export default function DashboardPage() {
     };
   }, [claims]);
 
-  const isLoading = isLoadingClaimIds || isLoadingClaims;
-  const error = claimIdsError;
+  const isLoading = isLoadingClaimCodes || isLoadingClaims;
+  const error = claimCodesError;
 
   if (!isConnected) {
     return (
