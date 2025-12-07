@@ -76,7 +76,7 @@ export default function Claim() {
     }
 
     return {
-      claimId: Number(id),
+      id,
       claimCode: claimCode || '',
       payerAddress: payer,
       token,
@@ -119,7 +119,7 @@ export default function Claim() {
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: CONTRACT_ABI,
         functionName: "claim",
-        args: [BigInt(claim.claimId), secretBytes as `0x${string}`],
+        args: [claimCode as string, secretBytes as `0x${string}`],
       });
 
       toast.info("Waiting for confirmation...");

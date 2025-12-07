@@ -17,6 +17,7 @@ contract Paylink is ReentrancyGuard, Ownable {
     constructor() Ownable(msg.sender) {}
 
     struct Claim {
+        uint256 id;
         address payer;
         address token;
         uint256 amount;
@@ -33,25 +34,24 @@ contract Paylink is ReentrancyGuard, Ownable {
         RECLAIMED
     }
 
-    mapping(uint256 => Claim) public claims;
-    mapping(string => uint256) public codeToClaimId;
-    mapping(address => uint256[]) private userClaims;
     uint256 public nextClaimId = 1;
+
+    mapping(string => Claim) public claims;
+    mapping(address => string[]) private userClaims;
     bool public paused;
 
     event ClaimCreated(
-        uint256 indexed id,
+        string indexed code,
         address indexed payer,
         address indexed token,
         uint256 amount,
         uint256 expiry,
         address recipient,
-        bytes32 secretHash,
-        string code
+        bytes32 secretHash
     );
 
-    event Claimed(uint256 indexed id, address indexed claimer, uint256 amount);
-    event Reclaimed(uint256 indexed id, address indexed payer, uint256 amount);
+    event Claimed(string indexed code, address indexed claimer, uint256 amount);
+    event Reclaimed(string indexed code, address indexed payer, uint256 amount);
     event Paused(address indexed by);
     event Unpaused(address indexed by);
 
@@ -61,9 +61,8 @@ contract Paylink is ReentrancyGuard, Ownable {
     }
 
     modifier validCode(string calldata code) {
-        require(bytes(code).length > 0, "code cannot be empty");
-        require(bytes(code).length <= 64, "code too long");
-        require(codeToClaimId[code] == 0, "code already exists");
+        require(bytes(code).length == 32, "code must be 32 chars"); // UUID without dashes
+        require(claims[code].payer == address(0), "code already exists");
         _;
     }
 
@@ -72,12 +71,12 @@ contract Paylink is ReentrancyGuard, Ownable {
         address recipient,
         bytes32 secretHash,
         string calldata code
-    ) external payable notPaused validCode(code) returns (uint256) {
+    ) external payable notPaused validCode(code) {
         require(msg.value > 0, "amount>0");
         require(expiry > block.timestamp, "expiry in future");
 
-        uint256 id = nextClaimId++;
-        claims[id] = Claim({
+        claims[code] = Claim({
+            id: nextClaimId,
             payer: msg.sender,
             token: NATIVE_CELO,
             amount: msg.value,
@@ -88,21 +87,18 @@ contract Paylink is ReentrancyGuard, Ownable {
             secretHash: secretHash
         });
 
-        codeToClaimId[code] = id;
-
-        userClaims[msg.sender].push(id);
+        nextClaimId++;
+        userClaims[msg.sender].push(code);
 
         emit ClaimCreated(
-            id,
+            code,
             msg.sender,
             NATIVE_CELO,
             msg.value,
             expiry,
             recipient,
-            secretHash,
-            code
+            secretHash
         );
-        return id;
     }
 
     function createClaimERC20(
@@ -112,15 +108,15 @@ contract Paylink is ReentrancyGuard, Ownable {
         address recipient,
         bytes32 secretHash,
         string calldata code
-    ) external notPaused validCode(code) returns (uint256) {
+    ) external notPaused validCode(code) {
         require(token != address(0), "token required");
         require(amount > 0, "amount>0");
         require(expiry > block.timestamp, "expiry in future");
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
-        uint256 id = nextClaimId++;
-        claims[id] = Claim({
+        claims[code] = Claim({
+            id: nextClaimId,
             payer: msg.sender,
             token: token,
             amount: amount,
@@ -131,30 +127,27 @@ contract Paylink is ReentrancyGuard, Ownable {
             secretHash: secretHash
         });
 
-        codeToClaimId[code] = id;
-
-        userClaims[msg.sender].push(id);
+        nextClaimId++;
+        userClaims[msg.sender].push(code);
 
         emit ClaimCreated(
-            id,
+            code,
             msg.sender,
             token,
             amount,
             expiry,
             recipient,
-            secretHash,
-            code
+            secretHash
         );
-        return id;
     }
 
     function claim(
-        uint256 id,
+        string calldata code,
         bytes calldata secret
     ) external nonReentrant notPaused {
-        Claim storage c = claims[id];
+        Claim storage c = claims[code];
+        require(c.payer != address(0), "invalid claim");
         require(!c.claimed, "already claimed");
-        require(c.amount > 0, "invalid claim");
         require(block.timestamp <= c.expiry, "claim expired");
 
         if (c.recipient != address(0)) {
@@ -176,13 +169,13 @@ contract Paylink is ReentrancyGuard, Ownable {
             IERC20(c.token).safeTransfer(msg.sender, c.amount);
         }
 
-        emit Claimed(id, msg.sender, c.amount);
+        emit Claimed(code, msg.sender, c.amount);
     }
 
-    function reclaim(uint256 id) external nonReentrant {
-        Claim storage c = claims[id];
+    function reclaim(string calldata code) external nonReentrant {
+        Claim storage c = claims[code];
+        require(c.payer != address(0), "invalid claim");
         require(!c.claimed, "already claimed");
-        require(c.amount > 0, "invalid claim");
         require(block.timestamp > c.expiry, "not expired");
         require(msg.sender == c.payer, "not payer");
 
@@ -196,7 +189,7 @@ contract Paylink is ReentrancyGuard, Ownable {
             IERC20(c.token).safeTransfer(c.payer, c.amount);
         }
 
-        emit Reclaimed(id, c.payer, c.amount);
+        emit Reclaimed(code, c.payer, c.amount);
     }
 
     function pause() external onlyOwner {
@@ -230,14 +223,6 @@ contract Paylink is ReentrancyGuard, Ownable {
         require(success, "CELO transfer failed");
     }
 
-    function getClaimIdByCode(
-        string calldata code
-    ) external view returns (uint256) {
-        uint256 id = codeToClaimId[code];
-        require(id != 0, "invalid code");
-        return id;
-    }
-
     function getClaimByCode(
         string calldata code
     )
@@ -251,57 +236,28 @@ contract Paylink is ReentrancyGuard, Ownable {
             uint256 expiry,
             bool claimed,
             ClaimStatus status,
-            address recipientMasked,
+            address recipient,
             bool requiresSecret,
             bool isNative
         )
     {
-        id = codeToClaimId[code];
-        require(id != 0, "invalid code");
+        Claim storage c = claims[code];
+        require(c.payer != address(0), "invalid code");
 
-        Claim storage c = claims[id];
+        id = c.id;
         payer = c.payer;
         token = c.token;
         amount = c.amount;
         expiry = c.expiry;
         claimed = c.claimed;
         status = c.status;
-        recipientMasked = c.recipient;
+        recipient = c.recipient;
         requiresSecret = (c.secretHash != bytes32(0));
         isNative = (c.token == NATIVE_CELO);
     }
 
-    function getClaimPublic(
-        uint256 id
-    )
-        external
-        view
-        returns (
-            address payer,
-            address token,
-            uint256 amount,
-            uint256 expiry,
-            bool claimed,
-            ClaimStatus status,
-            address recipientMasked,
-            bool requiresSecret,
-            bool isNative
-        )
-    {
-        Claim storage c = claims[id];
-        payer = c.payer;
-        token = c.token;
-        amount = c.amount;
-        expiry = c.expiry;
-        claimed = c.claimed;
-        status = c.status;
-        recipientMasked = c.recipient;
-        requiresSecret = (c.secretHash != bytes32(0));
-        isNative = (c.token == NATIVE_CELO);
-    }
-
-    function isNativeClaim(uint256 id) external view returns (bool) {
-        return claims[id].token == NATIVE_CELO;
+    function isNativeClaim(string calldata code) external view returns (bool) {
+        return claims[code].token == NATIVE_CELO;
     }
 
     function getNativeBalance() external view returns (uint256) {
@@ -310,7 +266,7 @@ contract Paylink is ReentrancyGuard, Ownable {
 
     function getUserClaims(
         address user
-    ) external view returns (uint256[] memory) {
+    ) external view returns (string[] memory) {
         return userClaims[user];
     }
 
@@ -318,8 +274,7 @@ contract Paylink is ReentrancyGuard, Ownable {
         return userClaims[user].length;
     }
 
-    receive() external payable {
-    }
+    receive() external payable {}
 
     fallback() external payable {
         revert("Function not found");

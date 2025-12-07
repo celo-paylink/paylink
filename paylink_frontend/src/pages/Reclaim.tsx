@@ -9,20 +9,12 @@ import { CONTRACT_ABI, CONTRACT_ADDRESS } from "../libs/contract";
 import { config } from "../libs/config";
 
 export default function Reclaim() {
-  const { claimCode: claimIdParam } = useParams();
+  const { claimCode } = useParams();
   const navigate = useNavigate();
   const { address, isConnected } = useAccount();
   const [isProcessing, setIsProcessing] = useState(false);
   const [reclaimTxHash, setReclaimTxHash] = useState<string | null>(null);
   const [reclaimSuccess, setReclaimSuccess] = useState(false);
-
-  // Parse claim ID from URL parameter
-  const claimId = useMemo(() => {
-    if (!claimIdParam) return null;
-    // Handle both "claim-123" and "123" formats
-    const match = claimIdParam.match(/\d+$/);
-    return match ? parseInt(match[0]) : null;
-  }, [claimIdParam]);
 
   // Fetch claim data from smart contract using claim ID
   const {
@@ -33,10 +25,10 @@ export default function Reclaim() {
   } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: CONTRACT_ABI,
-    functionName: "getClaimPublic",
-    args: claimId !== null ? [BigInt(claimId)] : undefined,
+    functionName: "getClaimByCode",
+    args: [claimCode as string],
     query: {
-      enabled: claimId !== null,
+      enabled: claimCode !== null,
     }
   });
 
@@ -44,9 +36,10 @@ export default function Reclaim() {
 
   // Parse claim data
   const claim = useMemo(() => {
-    if (!claimData || claimId === null) return null;
+    if (!claimData || claimCode === null) return null;
 
     const [
+      id,
       payer,
       token,
       amount,
@@ -56,7 +49,18 @@ export default function Reclaim() {
       recipientMasked,
       requiresSecret,
       isNative
-    ] = claimData as [string, string, bigint, bigint, boolean, number, string, boolean, boolean];
+    ] = Array.from(claimData) as [
+      bigint,
+      string,
+      string,
+      bigint,
+      bigint,
+      boolean,
+      number,
+      string,
+      boolean,
+      boolean
+    ];
 
     let status: 'CREATED' | 'CLAIMED' | 'RECLAIMED' = 'CREATED';
     if (statusEnum === 1) {
@@ -66,7 +70,7 @@ export default function Reclaim() {
     }
 
     return {
-      claimId: claimId,
+      id,
       payerAddress: payer,
       token,
       amount: amount.toString(),
@@ -77,7 +81,7 @@ export default function Reclaim() {
       requiresSecret,
       isNative,
     };
-  }, [claimData, claimId]);
+  }, [claimData, claimCode]);
 
   const handleReclaimContract = async () => {
     if (!isConnected || !address) {
@@ -103,7 +107,7 @@ export default function Reclaim() {
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: CONTRACT_ABI,
         functionName: "reclaim",
-        args: [BigInt(claim.claimId)],
+        args: [claimCode as string],
       });
 
       toast.info("Waiting for confirmation...");
@@ -170,12 +174,12 @@ export default function Reclaim() {
     }
   };
 
-  if (claimId === null) {
+  if (claimCode === null) {
     return (
       <div className="container" style={{ paddingTop: "2rem", maxWidth: "48rem" }}>
         <div className="card">
           <h2 style={{ color: "#ef4444" }}>Invalid Claim ID</h2>
-          <p className="muted">The claim ID provided is invalid.</p>
+          <p className="muted">The claim code provided is invalid.</p>
           <button
             className="btn btn-ghost"
             onClick={() => navigate("/reclaim")}
@@ -342,11 +346,11 @@ export default function Reclaim() {
             </label>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <p style={{ fontFamily: "monospace", fontSize: "1.125rem", fontWeight: 600, flex: 1 }}>
-                #{claim.claimId}
+                #{claim.id}
               </p>
               <button
                 className="btn btn-ghost"
-                onClick={() => copyToClipboard(claim.claimId.toString(), "Claim ID")}
+                onClick={() => copyToClipboard(claimCode ?? "", "Claim ID")}
                 style={{ padding: "0.25rem 0.5rem", fontSize: "0.875rem" }}
               >
                 Copy

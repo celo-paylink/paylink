@@ -318,14 +318,17 @@ export default function CreatePaylinkPage() {
     try {
       for (let i = 0; i < 5; i++) {
         claimCode = generateClaimCode();
-        const data = await readContract(config, {
-          address: CONTRACT_ADDRESS,
-          abi: CONTRACT_ABI,
-          functionName: 'codeToClaimId',
-          args: [claimCode]
-        });
 
-        if (Number(data) === 0 || data === 0n) {
+        try {
+          await readContract(config, {
+            address: CONTRACT_ADDRESS,
+            abi: CONTRACT_ABI,
+            functionName: 'getClaimByCode',
+            args: [claimCode]
+          });
+
+        } catch (error) {
+          console.log(error)
           isUnique = true;
           break;
         }
