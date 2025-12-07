@@ -1,21 +1,100 @@
-import { useQuery } from '@tanstack/react-query';
-import { useAccount } from 'wagmi';
-import { TrendingUp, Activity, Wallet, Clock, Link as LinkIcon } from 'lucide-react';
-import { PaylinkService } from '../services/paylink';
+import { useAccount, useReadContract, useReadContracts } from 'wagmi';
+import { TrendingUp, Activity, Wallet, Clock, Link2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { NavLink } from 'react-router';
+import { CONTRACT_ABI, CONTRACT_ADDRESS } from '../libs/contract';
+import { ethers } from 'ethers';
 
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
-
-  // Fetch user's claims/paylinks
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['userClaims', address],
-    queryFn: () => PaylinkService.getUserClaims(),
-    enabled: !!isConnected && !!address,
+  
+  const {
+    isLoading: isLoadingClaimIds, 
+    data: claimIds,
+    error: claimIdsError
+  } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: "getUserClaims",
+    args: [address as `0x${string}`],
+    query: {
+      enabled: isConnected && !!address,
+    }
   });
 
-  const claims = data?.data?.claims || [];
+  const claimContracts = useMemo(() => {
+    if (!claimIds || !Array.isArray(claimIds) || claimIds.length === 0) {
+      return [];
+    }
+
+    return claimIds.map((claimId: bigint) => ({
+      address: CONTRACT_ADDRESS as `0x${string}`,
+      abi: CONTRACT_ABI,
+      functionName: 'getClaimPublic',
+      args: [claimId],
+    }));
+  }, [claimIds]);
+
+  const {
+    data: claimsData,
+    isLoading: isLoadingClaims,
+  } = useReadContracts({
+    contracts: claimContracts,
+    query: {
+      enabled: claimContracts.length > 0,
+    }
+  });
+
+  const claims = useMemo(() => {
+    if (!claimIds || !claimsData || !Array.isArray(claimIds)) {
+      return [];
+    }
+
+    return claimIds.map((claimId: bigint, index: number) => {
+      const claimData = claimsData[index];
+      
+      if (!claimData || claimData.status === 'failure' || !claimData.result) {
+        return null;
+      }
+
+      // Updated to match the new contract return values including ClaimStatus
+      const [
+        payer,
+        token,
+        amount,
+        expiry,
+        claimed,
+        statusEnum,
+        recipientMasked,
+        requiresSecret,
+        isNative
+      ] = claimData.result as unknown as [string, string, bigint, bigint, boolean, number, string, boolean, boolean];
+
+      // Map enum to status string (0=CREATED, 1=CLAIMED, 2=RECLAIMED)
+      let status: 'CREATED' | 'CLAIMED' | 'RECLAIMED' = 'CREATED';
+      if (statusEnum === 1) {
+        status = 'CLAIMED';
+      } else if (statusEnum === 2) {
+        status = 'RECLAIMED';
+      }
+
+      const expiryTimestamp = Number(expiry);
+
+      return {
+        id: Number(claimId),
+        payer,
+        token,
+        amount: amount.toString(),
+        expiry: expiryTimestamp * 1000, // Convert to milliseconds for JS Date
+        claimed,
+        status,
+        recipient: recipientMasked,
+        requiresSecret,
+        isNative,
+        createdAt: Date.now() - (index * 1000 * 60 * 60), // Approximation since contract doesn't store creation time
+      };
+    }).filter(Boolean);
+  }, [claimIds, claimsData]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -26,10 +105,7 @@ export default function DashboardPage() {
       const isExpired = new Date(claim.expiry) < new Date();
       return claim.status === 'CREATED' && !isExpired;
     }).length;
-    const pending = claims.filter((claim: any) => {
-      const isExpired = new Date(claim.expiry) < new Date();
-      return claim.status === 'CREATED' && !isExpired;
-    }).length;
+    const pending = active; // Active and pending are the same
 
     return {
       total,
@@ -39,6 +115,9 @@ export default function DashboardPage() {
       reclaimed,
     };
   }, [claims]);
+
+  const isLoading = isLoadingClaimIds || isLoadingClaims;
+  const error = claimIdsError;
 
   if (!isConnected) {
     return (
@@ -171,7 +250,6 @@ export default function DashboardPage() {
               Create your first paylink to start sending secure payments on the Celo blockchain
             </p>
             <NavLink to={'/create'} className="btn btn-primary">Create Your First Paylink</NavLink>
-
           </div>
         ) : (
           <div className="space-y-4">
@@ -187,18 +265,25 @@ export default function DashboardPage() {
                   claim.status === 'RECLAIMED' ? 'Reclaimed' :
                     isExpired ? 'Expired' : 'Active';
 
+              // Format amount based on whether it's native or ERC20
+              const formattedAmount = claim.isNative 
+                ? ethers.formatEther(claim.amount)
+                : (parseFloat(claim.amount) / 1e18).toFixed(4);
+
+              const tokenSymbol = claim.isNative ? 'CELO' : 'TOKEN';
+
               return (
                 <div
-                  key={claim.claimCode}
+                  key={claim.id}
                   className="flex items-center justify-between p-4 rounded-xl transition-all hover:bg-[rgba(139,92,246,0.05)]"
                   style={{ border: '1px solid rgba(139, 92, 246, 0.1)' }}
                 >
                   <div className="flex items-center gap-4 flex-1">
                     <div className="p-2 rounded-lg bg-gradient-to-br from-[var(--gradient-purple)] to-[var(--gradient-cyan)]">
-                      <LinkIcon className="w-5 h-5 text-white" />
+                      <Link2 className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{claim.claimCode}</p>
+                      <p className="font-semibold truncate">Claim #{claim.id}</p>
                       <p className="text-sm text-[var(--text-muted)]">
                         {new Date(claim.createdAt).toLocaleDateString()}
                       </p>
@@ -206,9 +291,9 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="font-bold">{parseFloat(claim.amount) / 1e18} CELO</p>
+                      <p className="font-bold">{formattedAmount} {tokenSymbol}</p>
                       <p className="text-xs text-[var(--text-muted)]">
-                        {claim.token === '0x0000000000000000000000000000000000000000' ? 'Native' : 'Token'}
+                        {claim.isNative ? 'Native' : 'Token'}
                       </p>
                     </div>
                     <div
@@ -227,9 +312,9 @@ export default function DashboardPage() {
 
             {claims.length > 5 && (
               <div className="text-center pt-4">
-                <a href="/reclaim" className="btn btn-ghost">
+                <NavLink to="/reclaim" className="btn btn-ghost">
                   View All Paylinks →
-                </a>
+                </NavLink>
               </div>
             )}
           </div>

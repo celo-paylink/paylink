@@ -12,7 +12,6 @@ import GridBackground from './components/grid-background'
 function App() {
   return (
     <>
-      {/* Animated Grid Background - Appears on all pages */}
       <GridBackground gridSize={30} glowRadius={5} />
 
       <Routes>
