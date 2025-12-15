@@ -1,8 +1,8 @@
 {
     "accountAssociation": {
-        "header": "PLACEHOLDER - Sign at https://farcaster.xyz/~/developers/mini-apps/manifest?domain=paylinkfrontend.vercel.app",
-        "payload": "PLACEHOLDER - After signing, replace this entire accountAssociation object",
-        "signature": "PLACEHOLDER - with the signed data from Farcaster"
+        "header": "eyJmaWQiOjEwNzk5OTksInR5cGUiOiJhdXRoIiwia2V5IjoiMHgwOTIwMzZmNUFENDAxMDY4ZTZFMTAyNDRjNmUwRWRCN2M0NEQyMDdBIn0",
+        "payload": "eyJkb21haW4iOiJwYXlsaW5rZnJvbnRlbmQudmVyY2VsLmFwcCJ9",
+        "signature": "zxt50VOCtTRNQhpIoE5Ap3p9595Lc940EfaE9NCbSpkVZRZvfPrTQGoS0QnFlbwUsJBV31CpZckyfKrL/A6WeBw="
     },
     "miniapp": {
         "version": "1",
