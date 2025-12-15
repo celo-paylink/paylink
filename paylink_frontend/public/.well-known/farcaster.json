@@ -7,10 +7,11 @@
     "miniapp": {
         "version": "1",
         "name": "Paylink",
+        "description": "Create and share secure payment links on Celo. Send crypto to anyone with just a link - no wallet address required.",
         "iconUrl": "https://paylinkfrontend.vercel.app/splash-icon.png",
         "homeUrl": "https://paylinkfrontend.vercel.app",
         "imageUrl": "https://paylinkfrontend.vercel.app/og-image.png",
-        "buttonTitle": "� Open Paylink",
+        "buttonTitle": "🔗 Open Paylink",
         "splashImageUrl": "https://paylinkfrontend.vercel.app/splash-icon.png",
         "splashBackgroundColor": "#1a0b2e",
         "requiredChains": [
