@@ -4,12 +4,21 @@
         "payload": "PLACEHOLDER - After signing, replace this entire accountAssociation object",
         "signature": "PLACEHOLDER - with the signed data from Farcaster"
     },
-    "frame": {
+    "miniapp": {
         "version": "1",
         "name": "Paylink",
         "iconUrl": "https://paylinkfrontend.vercel.app/splash-icon.png",
+        "homeUrl": "https://paylinkfrontend.vercel.app",
+        "imageUrl": "https://paylinkfrontend.vercel.app/og-image.png",
+        "buttonTitle": "� Open Paylink",
         "splashImageUrl": "https://paylinkfrontend.vercel.app/splash-icon.png",
         "splashBackgroundColor": "#1a0b2e",
-        "homeUrl": "https://paylinkfrontend.vercel.app"
+        "requiredChains": [
+            "eip155:42220"
+        ],
+        "requiredCapabilities": [
+            "actions.signIn",
+            "wallet.getEthereumProvider"
+        ]
     }
 }
