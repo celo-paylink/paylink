@@ -25,6 +25,9 @@ export default function Layout({ children }: { children: ReactNode }) {
               <NavLink to="/dashboard" className="text-white hover:text-blue-600 transition">
                 Dashboard
               </NavLink>
+              <NavLink to="https://github.com/celo-paylink/paylink/tree/main/paylink_frontend#readme" className="text-white hover:text-blue-600 transition">
+                Documentation
+              </NavLink>
             </div>
           </div>
         </div>

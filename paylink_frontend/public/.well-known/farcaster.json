@@ -1,0 +1,15 @@
+{
+    "accountAssociation": {
+        "header": "PLACEHOLDER - Sign at https://farcaster.xyz/~/developers/mini-apps/manifest?domain=paylinkfrontend.vercel.app",
+        "payload": "PLACEHOLDER - After signing, replace this entire accountAssociation object",
+        "signature": "PLACEHOLDER - with the signed data from Farcaster"
+    },
+    "frame": {
+        "version": "1",
+        "name": "Paylink",
+        "iconUrl": "https://paylinkfrontend.vercel.app/splash-icon.png",
+        "splashImageUrl": "https://paylinkfrontend.vercel.app/splash-icon.png",
+        "splashBackgroundColor": "#1a0b2e",
+        "homeUrl": "https://paylinkfrontend.vercel.app"
+    }
+}
