@@ -13,7 +13,7 @@
         "imageUrl": "https://paylinkfrontend.vercel.app/og-image.png",
         "buttonTitle": "🔗 Open Paylink",
         "splashImageUrl": "https://paylinkfrontend.vercel.app/splash-icon.png",
-        "splashBackgroundColor": "#1a0b2e",
+        "splashBackgroundColor": "#005500",
         "requiredChains": [
             "eip155:42220"
         ],
